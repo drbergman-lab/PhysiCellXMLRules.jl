@@ -7,7 +7,7 @@ export writeXMLRules
 
 If the name for a signal or behavior starts with "custom:", use the synonym "custom <name>" instead.
 
-pcvct uses `:` to use attributes to specify elements in an XML path. So, we use `custom <name>` to avoid incorrect splitting on `:`.
+[PhysiCellModelManager.jl](https://github.com/drbergman-lab/PhysiCellModelManager.jl/) uses `:` to use attributes to specify elements in an XML path. So, we use `custom <name>` to avoid incorrect splitting on `:`.
 """
 function standardizeCustomName(name)
     if !startswith(name, "custom:")

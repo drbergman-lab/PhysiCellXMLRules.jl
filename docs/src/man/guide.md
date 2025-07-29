@@ -8,12 +8,12 @@ $ curl -fsSL https://install.julialang.org | sh
 ```
 Note: this command also installs the [JuliaUp](https://github.com/JuliaLang/juliaup) installation manager, which will automatically install julia and help keep it up to date.
 
-### Add the PCVCTRegistry
+### Add the BergmanLabRegistry
 Launch julia by running `julia` in a shell.
 Then, enter the Pkg REPL by pressing `]`.
-Finally, add the PCVCTRegistry by running:
+Finally, add the BergmanLabRegistry by running:
 ```
-pkg> registry add https://github.com/drbergman/PCVCTRegistry
+pkg> registry add https://github.com/drbergman-lab/BergmanLabRegistry
 ```
 
 ### Install PhysiCellXMLRules
