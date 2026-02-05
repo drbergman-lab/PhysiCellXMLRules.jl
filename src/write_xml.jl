@@ -2,29 +2,13 @@ using CSV, DataFrames, LightXML
 
 export writeXMLRules
 
-"""
-    standardizeCustomName(name::AbstractString)
-
-If the name for a signal or behavior starts with "custom:", use the synonym "custom <name>" instead.
-
-[PhysiCellModelManager.jl](https://github.com/drbergman-lab/PhysiCellModelManager.jl/) uses `:` to use attributes to specify elements in an XML path. So, we use `custom <name>` to avoid incorrect splitting on `:`.
-"""
-function standardizeCustomName(name)
-    if !startswith(name, "custom:")
-        return name
-    end
-    # store all custom behaviors as "custom <name>" to only use `:` for indicating attribute on xml paths
-    name = name[8:end] |> lstrip
-    return "custom $name"
-end
-
 abstract type AbstractSignal end
 
 struct SignalReference
     value::Float64
     type::String
     function SignalReference(value::Real, type::AbstractString="increasing")
-        @assert type in ["increasing", "decreasing"] "type must be either 'increasing' or 'decreasing'"
+        @assert type in ["increasing", "decreasing"] "Reference type must be either 'increasing' or 'decreasing'"
         new(value, type)
     end
 end
@@ -32,9 +16,9 @@ end
 validateReference(::Nothing, ::Real) = nothing
 function validateReference(reference::SignalReference, half_max::Real)
     if reference.type == "increasing"
-        @assert reference.value < half_max "half_max ($(half_max)) must be greater than the reference value ($(reference.value)) for an increasing reference"
+        @assert reference.value < half_max "Reference half_max ($(half_max)) must be greater than the reference value ($(reference.value)) for an increasing reference"
     else
-        @assert reference.value > half_max "half_max ($(half_max)) must be less than the reference value ($(reference.value)) for a decreasing reference"
+        @assert reference.value > half_max "Reference half_max ($(half_max)) must be less than the reference value ($(reference.value)) for a decreasing reference"
     end
     return nothing
 end
@@ -67,7 +51,6 @@ struct HillSignal <: AbstractHillSignal
     reference::Union{Nothing,SignalReference}
     function HillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
         validateReference(reference, half_max)
-        name = standardizeCustomName(name)
         p = HillTypeParameters(half_max, hill_power)
         new(name, p, applies_to_dead, reference)
     end
@@ -82,7 +65,6 @@ struct PartialHillSignal <: AbstractHillSignal
     reference::Union{Nothing,SignalReference}
     function PartialHillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
         validateReference(reference, half_max)
-        name = standardizeCustomName(name)
         p = HillTypeParameters(half_max, hill_power)
         new(name, p, applies_to_dead, reference)
     end
@@ -95,7 +77,6 @@ struct IdentitySignal <: RelativeSignal
     applies_to_dead::Bool
     reference::Union{Nothing,SignalReference}
     function IdentitySignal(name::AbstractString, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
-        name = standardizeCustomName(name)
         new(name, applies_to_dead, reference)
     end
 end    
@@ -107,9 +88,8 @@ struct LinearSignal <: AbsoluteSignal
     signal_max::Float64
     type::String
     function LinearSignal(name::AbstractString, signal_min::Real, signal_max::Real, applies_to_dead::Bool, type::AbstractString="increasing")
-        @assert type in ["increasing", "decreasing"] "type must be either 'increasing' or 'decreasing'"
-        @assert signal_min < signal_max "signal_min ($signal_min) must be less than signal_max ($signal_max)"
-        name = standardizeCustomName(name)
+        @assert type in ["increasing", "decreasing"] "Linear type must be either 'increasing' or 'decreasing'"
+        @assert signal_min < signal_max "Linear signal_min ($signal_min) must be less than signal_max ($signal_max)"
         new(name, applies_to_dead, signal_min, signal_max, type)
     end
 end
@@ -120,8 +100,7 @@ struct HeavisideSignal <: AbsoluteSignal
     threshold::Float64
     type::String
     function HeavisideSignal(name::AbstractString, threshold::Real, applies_to_dead::Bool, type::AbstractString="increasing")
-        @assert type in ["increasing", "decreasing"] "type must be either 'increasing' or 'decreasing'"
-        name = standardizeCustomName(name)
+        @assert type in ["increasing", "decreasing"] "Heaviside type must be either 'increasing' or 'decreasing'"
         new(name, applies_to_dead, threshold, type)
     end
 end
@@ -149,10 +128,10 @@ struct MediatorSignal <: AbstractSignal
     max::Union{Nothing,Float64}
     mediator::String
     function MediatorSignal(decreasing_signal::AggregatorSignal, increasing_signal::AggregatorSignal, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant")
-        @assert isnothing(min) || isnothing(base) || min <= base "min ($min) must be less than or equal to base ($base)"
-        @assert isnothing(min) || isnothing(max) || min <= max "min ($min) must be less than or equal to max ($max)"
-        @assert isnothing(base) || isnothing(max) || base <= max "base ($base) must be less than or equal to max ($max)"
-        @assert mediator in ["decreasing_dominant", "decreasing dominant", "increasing_dominant", "increasing dominant", "neutral"] "mediator must be one of 'decreasing_dominant', 'increasing_dominant', or 'neutral'"
+        @assert isnothing(min) || isnothing(base) || min <= base "Mediator min ($min) must be less than or equal to base ($base)"
+        @assert isnothing(min) || isnothing(max) || min <= max "Mediator min ($min) must be less than or equal to max ($max)"
+        @assert isnothing(base) || isnothing(max) || base <= max "Mediator base ($base) must be less than or equal to max ($max)"
+        @assert mediator in ["decreasing_dominant", "decreasing dominant", "increasing_dominant", "increasing dominant", "neutral"] "Mediator must be one of 'decreasing_dominant', 'increasing_dominant', or 'neutral'"
         new(decreasing_signal, increasing_signal, min, base, max, mediator)
     end
     function MediatorSignal(decreasing_signals::AbstractVector{<:AbstractSignal}, increasing_signals::AbstractVector{<:AbstractSignal}, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant")
@@ -165,8 +144,7 @@ struct Behavior
     signal::AbstractSignal
     type::String
     function Behavior(name::AbstractString, signal::MediatorSignal, type::AbstractString="setter")
-        @assert type in ["setter", "attenuator", "accumulator"] "type must be either 'setter', 'attenuator', or 'accumulator'"
-        name = standardizeCustomName(name)
+        @assert type in ["setter", "attenuator", "accumulator"] "Behavior type must be either 'setter', 'attenuator', or 'accumulator'"
         new(name, signal, type)
     end
     function Behavior(name::AbstractString, signal::AbstractSignal, type::AbstractString="setter")

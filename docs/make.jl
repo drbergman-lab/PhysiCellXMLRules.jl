@@ -26,6 +26,6 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/drbergman-lab/PhysiCellXMLRules.jl",
-    devbranch="development",
+    devbranch="main",
     push_preview=true,
 )

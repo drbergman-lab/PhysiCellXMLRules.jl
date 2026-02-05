@@ -5,4 +5,8 @@
 /docs/Manifest.toml
 /docs/build/
 
+.DS_Store
 .vscode
+
+/test/*.csv
+/test/*.xml
