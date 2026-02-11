@@ -65,3 +65,39 @@ exportCSVRules("./test_elementary_sans_type.csv", "./test_elementary_sans_type.x
 
 @test_throws AssertionError exportCSVRules("./test_elementary_sans_type.csv", "./test_elementary_sans_type.xml")
 exportCSVRules("./test_elementary_sans_type.csv", "./test_elementary_sans_type.xml"; force=true)
+
+#! test export with unsupported elementary signal type
+set_attribute(e_signal, "type", "unsupported_type")
+save_file(xml_doc, "./test_elementary_unsupported_type.xml")
+@test_throws PhysiCellXMLRules.UnsupportedSignalTypeError exportCSVRules("./test_elementary_unsupported_type.csv", "./test_elementary_unsupported_type.xml")
+try
+    exportCSVRules("./test_elementary_unsupported_type_2.csv", "./test_elementary_unsupported_type.xml")
+catch e
+    @test e isa PhysiCellXMLRules.UnsupportedSignalTypeError
+    @test e.cell_type == cell_type
+    @test e.behavior_name == behavior_name
+    @test e.signal_name == "pressure"
+    @test e.signal_type == "unsupported_type"
+    showerror(stdout, e)
+end
+
+#! test export with missing max_response in aggregator
+xml_doc = XMLDocument()
+xml_root = create_root(xml_doc, "behavior_rulesets")
+cell_type = "cd8"
+e = new_child(xml_root, "behavior_ruleset")
+set_attribute(e, "name", cell_type)
+behavior_name = "attack cancer"
+e = new_child(e, "behavior")
+set_attribute(e, "name", behavior_name)
+e_increasing = new_child(e, "increasing_signals") 
+e_signal_1 = new_child(e_increasing, "signal")
+set_attribute(e_signal_1, "name", "debris gradient")
+e_half_max_1 = new_child(e_signal_1, "half_max")
+set_content(e_half_max_1, "1e-3")
+e_hill_power_1 = new_child(e_signal_1, "hill_power")
+set_content(e_hill_power_1, "2")
+e_applies_to_dead_1 = new_child(e_signal_1, "applies_to_dead")
+set_content(e_applies_to_dead_1, "0")
+save_file(xml_doc, "./test_missing_max_response.xml")
+exportCSVRules("./test_missing_max_response.csv", "./test_missing_max_response.xml")
