@@ -22,8 +22,8 @@ writeXMLRules("./test.xml", "./cell_rules.csv")
 n_rules = readchomp(`grep -c "<signal" ./test.xml`) |> x->parse(Int, x)
 @test n_rules == countlines(IOBuffer(csv_text)) - 2
 xml_lines = readlines("./test.xml")
-@test [contains(xml_line, "<behavior name=\"custom sample\"") for xml_line in xml_lines] |> sum == 1 # should be exactly one custom sample behavior
-@test [contains(xml_line, "<signal name=\"custom sample\"") for xml_line in xml_lines] |> sum == 1 # should be exactly one custom sample signal
+@test [contains(xml_line, "<behavior name=\"custom:sample\"") for xml_line in xml_lines] |> sum == 1 # should be exactly one custom sample behavior
+@test [contains(xml_line, "<signal name=\"custom:sample\"") for xml_line in xml_lines] |> sum == 1 # should be exactly one custom sample signal
 
 # ----------------------------
 open("cell_rules_empty.csv", "w") do f

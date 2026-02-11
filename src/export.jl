@@ -3,6 +3,20 @@ using CSV, LightXML
 
 export exportCSVRules
 
+struct UnsupportedSignalTypeError <: Exception
+    cell_type::String
+    behavior_name::String
+    signal_name::String
+    signal_type::String
+end
+
+function Base.showerror(io::IO, err::UnsupportedSignalTypeError)
+    println(io, """
+    Unsupported signal type `$(err.signal_type)` found in XML for cell type $(err.cell_type) in behavior $(err.behavior_name) and signal $(err.signal_name).
+    Supported signal types are "partial_hill", "hill", "identity", "linear", and "heaviside". This is case-insensitive.
+    """)
+end
+
 """
     exportCSVRules(path_to_csv::AbstractString, path_to_xml::AbstractString; force::Bool=false)
 
@@ -53,7 +67,7 @@ function exportCellToCSV(io::IO, behavior_ruleset::XMLElement)
 end
 
 function exportBehaviorToCSV(io::IO, cell_type::AbstractString, behavior::XMLElement)
-    behavior_name = attribute(behavior, "name") |> standardizeCustomNameExport
+    behavior_name = attribute(behavior, "name")
     println(io, "// └─$behavior_name")
     exportMediatorToCSV(io, cell_type, behavior, behavior_name, 2)
 end
@@ -76,42 +90,43 @@ function exportMediatorToCSV(io::IO, cell_type::AbstractString, behavior::XMLEle
     decreasing_signals_element = find_element(behavior, "decreasing_signals")
     if !isnothing(decreasing_signals_element)
         max_response_element = find_element(decreasing_signals_element, "max_response")
-        max_response = isnothing(max_response_element) ? max_response : content(max_response_element)
+        max_decreasing_response = isnothing(max_response_element) ? max_response : content(max_response_element)
         aggregator_element = find_element(decreasing_signals_element, "aggregator")
         aggregator = isnothing(aggregator_element) ? "multivariate_hill" : content(aggregator_element)
-        println(io, "// $("  " ^ (next_indent))└─decreasing to $max_response using a $aggregator aggregator")
-        exportAggregatorToCSV(io, cell_type, behavior_name, max_response, decreasing_signals_element, :decreases, next_indent+1)
+        middle_str = isempty(something(max_decreasing_response, "")) ? "" : " to $max_decreasing_response"
+        println(io, "// $("  " ^ (next_indent))└─decreasing", middle_str, " using a $aggregator aggregator")
+        exportAggregatorToCSV(io, cell_type, behavior_name, max_decreasing_response, decreasing_signals_element, :decreases, next_indent+1)
     end
     increasing_signals_element = find_element(behavior, "increasing_signals")
     if !isnothing(increasing_signals_element)
         max_response_element = find_element(increasing_signals_element, "max_response")
-        max_response = isnothing(max_response_element) ? max_response : content(max_response_element)
+        max_increasing_response = isnothing(max_response_element) ? max_response : content(max_response_element)
         aggregator_element = find_element(increasing_signals_element, "aggregator")
         aggregator = isnothing(aggregator_element) ? "multivariate_hill" : content(aggregator_element)
-        println(io, "// $("  " ^ (next_indent))└─increasing to $max_response using a $aggregator aggregator")
-        exportAggregatorToCSV(io, cell_type, behavior_name, max_response, increasing_signals_element, :increases, next_indent+1)
+        middle_str = isempty(something(max_increasing_response, "")) ? "" : " to $max_increasing_response"
+        println(io, "// $("  " ^ (next_indent))└─increasing", middle_str, " using a $aggregator aggregator")
+        exportAggregatorToCSV(io, cell_type, behavior_name, max_increasing_response, increasing_signals_element, :increases, next_indent+1)
     end
 end
 
 function exportAggregatorToCSV(io::IO, cell_type::AbstractString, behavior_name::AbstractString, max_response::AbstractString, signals_element::XMLElement, response::Symbol, indent::Int)
     for signal in get_elements_by_tagname(signals_element, "signal")
 
-        signal_type = attribute(signal, "type")
+        signal_type = something(attribute(signal, "type"), "partial_hill") |> lowercase
+
         if signal_type == "mediator"
             return exportMediatorToCSV(io, cell_type, signal, behavior_name, indent, max_response; is_top_level=false)
         elseif signal_type == "aggregator"
             return exportAggregatorToCSV(io, cell_type, behavior_name, max_response, signal, response, indent)
         end
-        
+
         signal_name = attribute(signal, "name")
-        
+
         #! if here, then it is an elementary signal
-        if isnothing(signal_type)
-            signal_type = "partial_hill"
-        else
-            @assert signal_type in ["partial_hill", "hill", "identity", "linear", "heaviside"] "Found signal type $(signal_type) in XML for cell type $(cell_type) in behavior $(behavior_name) and signal $(signal_name)."
+        if !(signal_type in ["partial_hill", "hill", "identity", "linear", "heaviside"])
+            throw(UnsupportedSignalTypeError(cell_type, behavior_name, signal_name, signal_type))
         end
-        
+
         if signal_type == "partial_hill"
             exportPartialHillSignalToCSV(io, cell_type, signal, signal_name, response, behavior_name, max_response)
         elseif signal_type == "hill"
@@ -124,6 +139,15 @@ function exportAggregatorToCSV(io::IO, cell_type::AbstractString, behavior_name:
             exportHeavisideSignalToCSV(io, cell_type, signal, signal_name, response, behavior_name, max_response)
         end
     end
+end
+
+function exportAggregatorToCSV(io::IO, cell_type::AbstractString, behavior_name::AbstractString, ::Nothing, signals_element::XMLElement, response::Symbol, indent::Int)
+    @info """
+    The XML-based rules can omit a top-level max response, using the base parameter value as the max response instead. However, the CSV export format requires a max_response for each row, so this row will be exported with an empty max_response value.
+    See warnings below for specific instances.
+    """ maxlog=1
+    @warn "An aggregator for cell type $(cell_type) in behavior $(behavior_name) with response $(response) has no max_response specified. See info message above for details."
+    exportAggregatorToCSV(io, cell_type, behavior_name, "", signals_element, response, indent)
 end
 
 function exportPartialHillSignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
@@ -171,30 +195,16 @@ end
 function parseSignalReference(signal_name::AbstractString, signal::XMLElement)
     reference = SignalReference(signal)
     if isnothing(reference)
-        return signal_name |> standardizeCustomNameExport
+        return signal_name
     end
     str_start = reference.type == "increasing" ? "" : "(decreasing) "
-    return "$str_start$(standardizeCustomNameExport(signal_name)) (from $(reference.value))"
+    return "$str_start$(signal_name) (from $(reference.value))"
 end
 
 function parseDirectionOfAbsoluteSignal(signal_name::AbstractString, signal::XMLElement)
     type_element = find_element(signal, "type")
     if isnothing(type_element) || content(type_element) == "increasing"
-        return signal_name |> standardizeCustomNameExport
+        return signal_name
     end
-    return "(decreasing) $(standardizeCustomNameExport(signal_name))"
-end
-
-"""
-    standardizeCustomNameExport(name::AbstractString)
-
-If the name for a signal or behavior starts with "custom ", use the synonym "custom:<name>" instead when exporting to a CSV.
-
-Both are acceptable, but this function will convert it to the more standard format in PhysiCell.
-"""
-function standardizeCustomNameExport(name)
-    if !startswith(name, "custom ")
-        return name
-    end
-    return "custom:" * lstrip(name[8:end])
+    return "(decreasing) $(signal_name)"
 end

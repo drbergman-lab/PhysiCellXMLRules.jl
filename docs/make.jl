@@ -8,7 +8,7 @@ makedocs(;
     authors="Daniel Bergman <danielrbergman@gmail.com> and contributors",
     sitename="PhysiCellXMLRules.jl",
     format=Documenter.HTML(;
-        canonical="https://drbergman.github.io/PhysiCellXMLRules.jl",
+        canonical="https://drbergman-lab.github.io/PhysiCellXMLRules.jl",
         edit_link="main",
         assets=String[]
     ),
@@ -25,7 +25,7 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/drbergman/PhysiCellXMLRules.jl",
-    devbranch="development",
+    repo="github.com/drbergman-lab/PhysiCellXMLRules.jl",
+    devbranch="main",
     push_preview=true,
 )
