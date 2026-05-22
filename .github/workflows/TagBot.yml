@@ -1,6 +1,5 @@
 name: TagBot
 on:
-  repository_dispatch: # I don't know what this is...but maybe one day I can duplicate what the HolyLab does?
   workflow_dispatch:
     inputs:
       lookback:
