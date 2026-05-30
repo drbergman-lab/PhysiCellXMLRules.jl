@@ -1,4 +1,4 @@
-# Guide
+# [Guide](@id Guide)
 
 ## Getting started
 ### Download julia
@@ -22,19 +22,60 @@ Still in the Pkg REPL, run:
 pkg> add PhysiCellXMLRules
 ```
 
-## Using PhysiCellXMLRules
-To convert a PhysiCell rules file (in CSV format) into an XML format, use
-```
+## What this package does
+PhysiCellXMLRules is the Julia-side reference implementation of the rules XML
+standard consumed by the extended PhysiCell rules grammar. The package
+exposes five workflows on top of that standard:
+
+| Function                                  | Purpose                                                                     |
+|-------------------------------------------|-----------------------------------------------------------------------------|
+| [`writeXMLRules`](@ref)                   | Convert a legacy CSV rules file to the XML format.                          |
+| [`exportCSVRules`](@ref)                  | Export a (possibly hierarchical) XML rules file to an annotated CSV.        |
+| [`parseRulesXML`](@ref)                   | Parse an XML rules file into a typed `Vector{BehaviorRuleset}`.             |
+| [`validateRulesXML`](@ref)                | Validate an XML rules file and return a [`ValidationReport`](@ref).         |
+| [`summarizeRulesXML`](@ref)               | Print a human-readable, indented summary of every behavior in a rules XML. |
+
+The full list of XML elements, attributes, and acceptable values is on the
+[Features](@ref Features) page; worked rulesets are on the
+[Examples](@ref Examples) page.
+
+## Converting CSV ↔ XML
+
+```julia
 using PhysiCellXMLRules
-new_file = "rules.xml"
-source_file = "rules.csv"
-writeXMLRules(new_file, source_file)
+writeXMLRules("rules.xml", "rules.csv")     # CSV → XML
+exportCSVRules("rules.csv", "rules.xml")    # XML → annotated CSV
 ```
 
-To convert from the XML format to the CSV format, use
-```
+`exportCSVRules` adds a comment header and a per-cell-type / per-behavior tree
+of comments above each row, so the CSV doubles as a human-readable
+description of the XML. The CSV format is a strict subset of the XML format,
+so the conversion can be lossy when the XML contains hierarchical signals,
+custom mediators or aggregators, or accumulator/attenuator behaviors.
+
+## Parsing, validating, and summarising an XML rules file
+
+```julia
 using PhysiCellXMLRules
-new_file = "rules.csv"
-source_file = "rules.xml"
-exportCSVRules(new_file, source_file)
+
+# Validate first — collects multiple errors and warnings into one report.
+report = validateRulesXML("config/cell_rules.xml")
+isvalid(report) || error("rules XML has problems:\n", report)
+
+# Parse into a typed tree.
+rulesets = parseRulesXML("config/cell_rules.xml")
+
+# Inspect a specific behavior.
+ruleset = rulesets[1]
+behavior = ruleset.behaviors[1]
+behavior.signal.mediator         # e.g. "decreasing_dominant"
+behavior.signal.increasing_signal.aggregator  # e.g. "multivariate_hill"
+
+# Or print a tree view of the whole file.
+summarizeRulesXML("config/cell_rules.xml")
 ```
+
+[`parseRulesXML`](@ref) is strict (the first malformed behavior raises). When
+you need a per-behavior report instead, use [`validateRulesXML`](@ref), which
+catches errors at the `<behavior>` boundary and also emits semantic warnings
+(e.g. an accumulator with no `<behavior_saturation>`).

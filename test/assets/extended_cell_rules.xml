@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<behavior_rulesets>
+    <behavior_ruleset name="increasing_partial_hill">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="decreasing_partial_hill">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                    <reference>
+                        <type>decreasing</type>
+                        <value>60</value>
+                    </reference>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="decreasing_dominant_mediator_hill">
+        <behavior name="custom:sample">
+            <type>setter</type>
+            <mediator>decreasing dominant</mediator>
+            <decreasing_signals>
+                <max_response>0</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="increasing_dominant_mediator_hill">
+        <behavior name="custom:sample">
+            <mediator>increasing dominant</mediator>
+            <decreasing_signals>
+                <max_response>0</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="neutral_mediator_hill">
+        <behavior name="custom:sample">
+            <mediator>neutral</mediator>
+            <decreasing_signals>
+                <max_response>0</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>20</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>40</half_max>
+                    <hill_power note="set it about cancels out with decreasing signal at t=60">5</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="increasing_linear">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Linear">
+                    <type>increasing</type>
+                    <signal_min>15</signal_min>
+                    <signal_max>45</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="decreasing_linear">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Linear">
+                    <type>decreasing</type>
+                    <signal_min>15</signal_min>
+                    <signal_max>45</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="heaviside">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Heaviside">
+                    <type>increasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="heaviside_decreasing">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Heaviside">
+                    <type>decreasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="mean_aggregator">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>mean</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Heaviside">
+                    <type>increasing</type>
+                    <threshold>13.5</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>increasing</type>
+                    <threshold>28.5</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>increasing</type>
+                    <threshold>43.5</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>increasing</type>
+                    <threshold>58.5</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="tent">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Linear">
+                    <signal_min>10</signal_min>
+                    <signal_max>20</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+            <decreasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>0</max_response>
+                <signal name="time" type="Linear">
+                    <signal_min>40</signal_min>
+                    <signal_max>50</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="vee">
+        <behavior name="custom:sample">
+            <mediator>increasing dominant</mediator>
+            <decreasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>0</max_response>
+                <signal name="time" type="Linear">
+                    <type>increasing</type>
+                    <signal_min>10</signal_min>
+                    <signal_max>20</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <aggregator>sum</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Linear">
+                    <type>increasing</type>
+                    <signal_min>40</signal_min>
+                    <signal_max>50</signal_max>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="increasing_hill_reference">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <max_response>1</max_response>
+                <signal name="time" type="PartialHill">
+                    <half_max>30</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                    <reference>
+                        <type>increasing</type>
+                        <value>20</value>
+                    </reference>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="accumulator">
+        <behavior name="custom:sample">
+            <type>accumulator</type>
+            <behavior_saturation note="This is the saturation of the behavior, not the rate.">1.0</behavior_saturation>
+            <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
+            <increasing_signals>
+                <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>
+                <aggregator>product</aggregator>
+                <signal name="time" type="Hill">
+                    <half_max>5</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>decreasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="attenuator">
+        <behavior name="custom:sample">
+            <type>attenuator</type>
+            <behavior_saturation note="This is the saturation of the behavior, not the rate.">0.0</behavior_saturation>
+            <base_value note="This is the base rate of change towards the base behavior.">-0.05</base_value>
+            <increasing_signals>
+                <max_response note="This is the saturation of the rate of change towards the saturation value.">0.2</max_response>
+                <aggregator>product</aggregator>
+                <signal name="time" type="Hill">
+                    <half_max>5</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Heaviside">
+                    <type>decreasing</type>
+                    <threshold>30</threshold>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="custom_mediator">
+        <behavior name="custom:sample">
+            <mediator>custom</mediator>
+            <decreasing_signals>
+                <aggregator>first</aggregator>
+                <max_response>0</max_response>
+                <signal name="time" type="Hill">
+                    <half_max>40</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <aggregator>first</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Hill">
+                    <half_max>10</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="custom_mediator_with_values">
+        <behavior name="custom:sample">
+            <mediator>custom</mediator>
+            <decreasing_signals>
+                <aggregator>first</aggregator>
+                <max_response>0</max_response>
+                <signal name="time" type="Hill">
+                    <half_max>20</half_max>
+                    <hill_power>16</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+            <increasing_signals>
+                <aggregator>first</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Hill">
+                    <half_max>10</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+    <behavior_ruleset name="custom_aggregator">
+        <behavior name="custom:sample">
+            <increasing_signals>
+                <aggregator>custom</aggregator>
+                <max_response>1</max_response>
+                <signal name="time" type="Hill">
+                    <half_max>10</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Hill">
+                    <half_max>20</half_max>
+                    <hill_power>8</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="time" type="Hill">
+                    <half_max>40</half_max>
+                    <hill_power>16</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+</behavior_rulesets>

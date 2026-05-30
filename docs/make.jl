@@ -15,7 +15,9 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Manual" => Any[
-            "Guide" => "man/guide.md"
+            "Guide" => "man/guide.md",
+            "Features" => "man/features.md",
+            "Examples" => "man/examples.md",
         ],
         "Documentation" => map(
             s -> "lib/$(s)",

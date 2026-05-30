@@ -105,12 +105,37 @@ struct HeavisideSignal <: AbsoluteSignal
     end
 end
 
+"""
+    AggregatorSignal(signals, aggregator="multivariate_hill")
+    AggregatorSignal(signal; aggregator="multivariate_hill")
+
+A signal that combines a vector of constituent signals into a single value.
+The `aggregator` string selects the reduction.
+
+Supported aggregators (with their formulas; `xᵢ` is the i-th constituent signal after transformation):
+
+| Name                | Formula            |
+|---------------------|--------------------|
+| `multivariate_hill` | ∑xᵢ / (1 + ∑xᵢ)    |
+| `sum`               | ∑xᵢ                |
+| `product`           | ∏xᵢ                |
+| `min`               | minᵢ xᵢ            |
+| `max`               | maxᵢ xᵢ            |
+| `mean`              | (1/n)∑xᵢ           |
+| `median`            | median of xᵢ       |
+| `geometric_mean`    | (∏xᵢ)^(1/n)        |
+| `first`             | x₁                 |
+| `custom`            | user-supplied in `custom.cpp` |
+
+Names are case-insensitive and treat space/underscore as equivalent
+(`multivariate hill` ≡ `multivariate_hill`).
+"""
 struct AggregatorSignal <: AbstractSignal
     signals::Vector{<:AbstractSignal}
     aggregator::String
     function AggregatorSignal(signals::Vector{<:AbstractSignal}, aggregator::AbstractString="multivariate_hill")
-        possible_aggregators = ["multivariate hill", "multivariate_hill", "sum", "product", "mean", "min", "max", "median", "geometric mean", "geometric_mean", "first"]
-        @assert aggregator in possible_aggregators "Aggregator must be one of $(join("'" .* possible_aggregators .+ "'", ", ", ", or "))"
+        possible_aggregators = ["multivariate hill", "multivariate_hill", "sum", "product", "mean", "min", "max", "median", "geometric mean", "geometric_mean", "first", "custom"]
+        @assert aggregator in possible_aggregators "Aggregator must be one of $(join("'" .* possible_aggregators .* "'", ", ", ", or "))"
         new(signals, aggregator)
     end
     function AggregatorSignal(signal::AbstractSignal; aggregator::AbstractString="multivariate_hill")
@@ -120,6 +145,25 @@ end
 
 Base.isempty(aggregator::AggregatorSignal) = isempty(aggregator.signals)
 
+"""
+    MediatorSignal(decreasing_signal, increasing_signal, min=nothing, base=nothing, max=nothing, mediator="decreasing_dominant")
+
+A signal that mediates between a decreasing-signals aggregator (`D`) and an
+increasing-signals aggregator (`U`). `min`, `base`, and `max` correspond to
+`b\\_-` (decreasing `<max_response>`), `b₀` (`<base_value>`), and `b\\_+`
+(increasing `<max_response>`) in the rules XML.
+
+Supported mediators:
+
+| Name                  | Formula                                              |
+|-----------------------|------------------------------------------------------|
+| `decreasing_dominant` | D·b\\_- + (1-D)·((1-U)·b₀ + U·b\\_+)                 |
+| `increasing_dominant` | U·b\\_+ + (1-U)·((1-D)·b₀ + D·b\\_-)                 |
+| `neutral`             | b₀ + D·(b\\_- - b₀) + U·(b\\_+ - b₀)                 |
+| `custom`              | user-supplied in `custom.cpp`                        |
+
+Names are case-insensitive and treat space/underscore as equivalent.
+"""
 struct MediatorSignal <: AbstractSignal
     decreasing_signal::AggregatorSignal
     increasing_signal::AggregatorSignal
@@ -131,7 +175,7 @@ struct MediatorSignal <: AbstractSignal
         @assert isnothing(min) || isnothing(base) || min <= base "Mediator min ($min) must be less than or equal to base ($base)"
         @assert isnothing(min) || isnothing(max) || min <= max "Mediator min ($min) must be less than or equal to max ($max)"
         @assert isnothing(base) || isnothing(max) || base <= max "Mediator base ($base) must be less than or equal to max ($max)"
-        @assert mediator in ["decreasing_dominant", "decreasing dominant", "increasing_dominant", "increasing dominant", "neutral"] "Mediator must be one of 'decreasing_dominant', 'increasing_dominant', or 'neutral'"
+        @assert mediator in ["decreasing_dominant", "decreasing dominant", "increasing_dominant", "increasing dominant", "neutral", "custom"] "Mediator must be one of 'decreasing_dominant', 'increasing_dominant', 'neutral', or 'custom'"
         new(decreasing_signal, increasing_signal, min, base, max, mediator)
     end
     function MediatorSignal(decreasing_signals::AbstractVector{<:AbstractSignal}, increasing_signals::AbstractVector{<:AbstractSignal}, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant")
@@ -139,16 +183,42 @@ struct MediatorSignal <: AbstractSignal
     end
 end
 
+"""
+    Behavior(name, signal, type="setter"; behavior_base=nothing, behavior_saturation=nothing)
+
+A rule for one cell behavior. The top-level `signal` must be a [`MediatorSignal`](@ref).
+
+`type` is one of:
+
+- `"setter"` (default): the mediator output is the behavior value `b'`. `<base_value>` is `b₀`.
+- `"accumulator"` / `"attenuator"`: the mediator output is the rate of change `r`.
+  `<base_value>` is the base rate `r₀`; `behavior_base` overrides the
+  cell-type default base behavior `b₀` (what the behavior converges toward
+  when the rate is negative); `behavior_saturation` is the saturation `bₛ`
+  (what the behavior converges toward when the rate is positive).
+
+`behavior_base` and `behavior_saturation` are meaningful only for
+`"accumulator"` and `"attenuator"` behaviors — for a setter, the behavior
+is set directly and has no rate of change for these endpoints to control.
+"""
 struct Behavior
     name::String
     signal::AbstractSignal
     type::String
-    function Behavior(name::AbstractString, signal::MediatorSignal, type::AbstractString="setter")
+    behavior_base::Union{Nothing,Float64}
+    behavior_saturation::Union{Nothing,Float64}
+    function Behavior(name::AbstractString, signal::MediatorSignal, type::AbstractString="setter";
+                      behavior_base::Union{Nothing,Real}=nothing,
+                      behavior_saturation::Union{Nothing,Real}=nothing)
         @assert type in ["setter", "attenuator", "accumulator"] "Behavior type must be either 'setter', 'attenuator', or 'accumulator'"
-        new(name, signal, type)
+        if type == "setter"
+            @assert isnothing(behavior_base) "behavior_base is only meaningful for 'accumulator' or 'attenuator' behaviors, not 'setter' (it controls what the rate-of-change drives the behavior toward when the rate is negative)"
+            @assert isnothing(behavior_saturation) "behavior_saturation is only meaningful for 'accumulator' or 'attenuator' behaviors, not 'setter' (it controls what the rate-of-change drives the behavior toward when the rate is positive)"
+        end
+        new(name, signal, type, behavior_base, behavior_saturation)
     end
-    function Behavior(name::AbstractString, signal::AbstractSignal, type::AbstractString="setter")
-        throw(ArgumentError("The signal must be either a MediatorSignal. Got $(typeof(signal)) for behavior $(name)"))
+    function Behavior(name::AbstractString, signal::AbstractSignal, type::AbstractString="setter"; kwargs...)
+        throw(ArgumentError("The signal must be a MediatorSignal. Got $(typeof(signal)) for behavior $(name)"))
     end
 end
 
@@ -280,6 +350,8 @@ end
 function addRule!(xml_root::XMLElement, cell_type::String, behavior::Behavior)
     behavior_element = getBehaviorElement(xml_root, cell_type, behavior.name)
     validateOrWriteElement!(behavior_element, "type", behavior.type)
+    isnothing(behavior.behavior_base) || validateOrWriteElement!(behavior_element, "behavior_base", behavior.behavior_base)
+    isnothing(behavior.behavior_saturation) || validateOrWriteElement!(behavior_element, "behavior_saturation", behavior.behavior_saturation)
     fillSignalElement!(behavior_element, behavior.signal)
 end
 
