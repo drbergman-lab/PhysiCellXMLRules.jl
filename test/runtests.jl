@@ -13,4 +13,5 @@ end
     include("./ParseRulesTests.jl")
     include("./ValidateRulesTests.jl")
     include("./SummarizeRulesTests.jl")
+    include("./EvaluateRulesTests.jl")
 end
