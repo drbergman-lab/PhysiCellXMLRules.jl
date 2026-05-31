@@ -6,6 +6,7 @@ include("parse_xml.jl")
 include("validate.jl")
 include("summarize.jl")
 include("evaluate.jl")
+include("dose_response.jl")
 include("export.jl")
 
 end
