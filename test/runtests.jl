@@ -18,4 +18,5 @@ end
     include("./HTMLTests.jl")
     include("./MultiSignalTests.jl")
     include("./RoundTripTests.jl")
+    include("./SchemaTests.jl")
 end

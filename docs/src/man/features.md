@@ -1,7 +1,9 @@
 # [Features](@id Features)
 
 This page enumerates every element of the rules XML standard that the
-package understands. Whenever a name is matched (e.g. an aggregator or
+package understands. The machine-readable counterpart (suitable for
+editors and `xmllint`) is documented on the [XSD schema](@ref Schema)
+page; the shipped file is `schemas/cell_rules.xsd`. Whenever a name is matched (e.g. an aggregator or
 mediator name), matching is **case-insensitive and treats spaces,
 underscores, and hyphens as equivalent** — so `partial_hill`, `partial
 hill`, `Partial-Hill`, and `PartialHill` all parse identically.

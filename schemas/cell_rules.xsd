@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="unqualified">
+
+  <xs:annotation>
+    <xs:documentation>
+      XML Schema (XSD 1.0) for the PhysiCell extended rules grammar
+      consumed by drbergman/PhysiCell and round-tripped by the Julia
+      package PhysiCellXMLRules.jl.
+
+      This schema covers the lexical and structural shape of a rules
+      file: element names, attribute names, value enumerations, type
+      coercions. A few constraints are NOT expressible in XSD 1.0 and
+      remain the responsibility of the validator
+      (PhysiCellXMLRules.validateRulesXML):
+
+        - Discriminated child elements based on a &lt;signal&gt;'s
+          `type` attribute (e.g. type="hill" requires &lt;half_max&gt;
+          and &lt;hill_power&gt;; type="linear" requires
+          &lt;signal_min&gt; and &lt;signal_max&gt;). This schema
+          permits any combination of the legal child elements.
+        - Mediator monotonicity (decreasing &lt;max_response&gt;
+          &lt;= &lt;base_value&gt; &lt;= increasing
+          &lt;max_response&gt;).
+        - &lt;behavior_base&gt; and &lt;behavior_saturation&gt; being
+          meaningful only when &lt;type&gt; is "accumulator" or
+          "attenuator".
+        - Hill &lt;reference&gt; half_max sitting in the support of
+          the reference value.
+
+      Names of mediators, aggregators, signal transformers, and
+      directions are case-insensitive in the parser and treat space /
+      underscore / hyphen as equivalent. This schema enumerates the
+      common forms (canonical snake_case + the CamelCase used in some
+      sample fixtures); other casings will pass the Julia parser but
+      fail XSD validation.
+
+      Usage:
+
+          xmllint --schema schemas/cell_rules.xsd \
+                  --noout my_cell_rules.xml
+    </xs:documentation>
+  </xs:annotation>
+
+  <!-- ─── Simple types ────────────────────────────────────────────── -->
+
+  <xs:simpleType name="Bool01">
+    <xs:annotation>
+      <xs:documentation>Boolean accepted as 0/1 or true/false.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="0"/>
+      <xs:enumeration value="1"/>
+      <xs:enumeration value="true"/>
+      <xs:enumeration value="false"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Direction">
+    <xs:annotation>
+      <xs:documentation>Direction for Linear/Heaviside transformers
+        and for &lt;reference&gt; elements.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="increasing"/>
+      <xs:enumeration value="decreasing"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BehaviorKind">
+    <xs:annotation>
+      <xs:documentation>How the mediator output is interpreted.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="setter"/>
+      <xs:enumeration value="accumulator"/>
+      <xs:enumeration value="attenuator"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="MediatorKind">
+    <xs:annotation>
+      <xs:documentation>Mediator name. `custom` delegates to a function
+        registered in PhysiCell's custom.cpp.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="decreasing_dominant"/>
+      <xs:enumeration value="decreasing dominant"/>
+      <xs:enumeration value="increasing_dominant"/>
+      <xs:enumeration value="increasing dominant"/>
+      <xs:enumeration value="neutral"/>
+      <xs:enumeration value="custom"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AggregatorKind">
+    <xs:annotation>
+      <xs:documentation>Aggregator name. `custom` delegates to a
+        function registered in PhysiCell's custom.cpp.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="multivariate_hill"/>
+      <xs:enumeration value="multivariate hill"/>
+      <xs:enumeration value="sum"/>
+      <xs:enumeration value="product"/>
+      <xs:enumeration value="min"/>
+      <xs:enumeration value="max"/>
+      <xs:enumeration value="mean"/>
+      <xs:enumeration value="median"/>
+      <xs:enumeration value="geometric_mean"/>
+      <xs:enumeration value="geometric mean"/>
+      <xs:enumeration value="first"/>
+      <xs:enumeration value="custom"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SignalKind">
+    <xs:annotation>
+      <xs:documentation>Value of the `type` attribute on a
+        &lt;signal&gt; element. Elementary kinds (partial_hill, hill,
+        identity, linear, heaviside) describe a transformer; composite
+        kinds (aggregator, mediator) describe a nested sub-tree.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="partial_hill"/>
+      <xs:enumeration value="partial hill"/>
+      <xs:enumeration value="PartialHill"/>
+      <xs:enumeration value="hill"/>
+      <xs:enumeration value="Hill"/>
+      <xs:enumeration value="identity"/>
+      <xs:enumeration value="Identity"/>
+      <xs:enumeration value="linear"/>
+      <xs:enumeration value="Linear"/>
+      <xs:enumeration value="heaviside"/>
+      <xs:enumeration value="Heaviside"/>
+      <xs:enumeration value="aggregator"/>
+      <xs:enumeration value="mediator"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- ─── Annotated-value wrappers ──────────────────────────────────
+       Value-bearing elements (numbers, booleans, enums) in real rules
+       XML files often carry inline documentation attributes — most
+       commonly note="..." — for human readers. These wrappers let any
+       such attribute through without validating it, so XSD validation
+       doesn't reject otherwise-correct files. -->
+
+  <xs:complexType name="DecimalValue">
+    <xs:simpleContent>
+      <xs:extension base="xs:decimal">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="Bool01Value">
+    <xs:simpleContent>
+      <xs:extension base="Bool01">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="DirectionValue">
+    <xs:simpleContent>
+      <xs:extension base="Direction">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="BehaviorKindValue">
+    <xs:simpleContent>
+      <xs:extension base="BehaviorKind">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="MediatorKindValue">
+    <xs:simpleContent>
+      <xs:extension base="MediatorKind">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="AggregatorKindValue">
+    <xs:simpleContent>
+      <xs:extension base="AggregatorKind">
+        <xs:anyAttribute processContents="skip"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <!-- ─── <reference> ─────────────────────────────────────────────── -->
+
+  <xs:complexType name="Reference">
+    <xs:annotation>
+      <xs:documentation>Reference value for Hill/PartialHill/Identity
+        signals. Shifts the input that is fed to the transformer; for
+        an increasing reference of value s_0, the input becomes
+        max(raw - s_0, 0); for a decreasing reference, max(s_0 - raw,
+        0).</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="type"  type="DirectionValue"/>
+      <xs:element name="value" type="DecimalValue"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- ─── <signal> (recursive) ────────────────────────────────────── -->
+
+  <xs:complexType name="Signal">
+    <xs:annotation>
+      <xs:documentation>
+        A signal element. Discriminated by the `type` attribute:
+
+          - partial_hill (default if `type` omitted) / hill:
+              requires &lt;half_max&gt;, &lt;hill_power&gt;; optional
+              &lt;reference&gt;.
+          - identity:
+              optional &lt;reference&gt;.
+          - linear:
+              requires &lt;signal_min&gt;, &lt;signal_max&gt;; optional
+              &lt;type&gt;increasing|decreasing&lt;/type&gt; (default
+              increasing).
+          - heaviside:
+              requires &lt;threshold&gt;; optional &lt;type&gt;
+              (default increasing).
+          - aggregator (composite):
+              optional &lt;aggregator&gt;, &lt;max_response&gt;; any
+              number of child &lt;signal&gt; elements.
+          - mediator (composite):
+              optional &lt;mediator&gt;, &lt;base_value&gt;,
+              &lt;decreasing_signals&gt;, &lt;increasing_signals&gt;.
+
+        All elementary signals also require &lt;applies_to_dead&gt;.
+
+        XSD 1.0 cannot express the type-discriminated content rule —
+        any of the listed child elements is permitted here; the
+        per-type requirement is enforced by
+        PhysiCellXMLRules.validateRulesXML.
+
+        The optional `id` attribute disambiguates sibling signals with
+        the same identity (same `name` for elementary, same `type` for
+        composite). Auto-assigned by the writer on collision; manually
+        set when external tools need stable references.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <!-- Elementary signal children -->
+      <xs:element name="applies_to_dead" type="Bool01Value"/>
+      <xs:element name="half_max"        type="DecimalValue"/>
+      <xs:element name="hill_power"      type="DecimalValue"/>
+      <xs:element name="reference"       type="Reference"/>
+      <xs:element name="signal_min"      type="DecimalValue"/>
+      <xs:element name="signal_max"      type="DecimalValue"/>
+      <xs:element name="threshold"       type="DecimalValue"/>
+      <xs:element name="type"            type="DirectionValue"/>
+      <!-- Composite signal children (used when type="aggregator" or
+           type="mediator"). -->
+      <xs:element name="aggregator"      type="AggregatorKindValue"/>
+      <xs:element name="max_response"    type="DecimalValue"/>
+      <xs:element name="mediator"        type="MediatorKindValue"/>
+      <xs:element name="base_value"      type="DecimalValue"/>
+      <xs:element name="decreasing_signals" type="SignalsBranch"/>
+      <xs:element name="increasing_signals" type="SignalsBranch"/>
+      <xs:element name="signal"          type="Signal"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="type" type="SignalKind"/>
+    <xs:attribute name="id"   type="xs:positiveInteger"/>
+  </xs:complexType>
+
+  <!-- ─── <decreasing_signals> / <increasing_signals> ─────────────── -->
+
+  <xs:complexType name="SignalsBranch">
+    <xs:annotation>
+      <xs:documentation>A mediator branch (decreasing or increasing
+        signals). The branch's `aggregator` (default
+        `multivariate_hill`) reduces the children's transformer outputs
+        to one scalar; the optional `max_response` is `b_-` for the
+        decreasing branch and `b_+` for the increasing branch.</xs:documentation>
+    </xs:annotation>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="aggregator"   type="AggregatorKindValue"/>
+      <xs:element name="max_response" type="DecimalValue"/>
+      <xs:element name="signal"       type="Signal"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <!-- ─── <behavior> ──────────────────────────────────────────────── -->
+
+  <xs:complexType name="Behavior">
+    <xs:annotation>
+      <xs:documentation>
+        One behavior rule.
+
+        For type="setter" (default): the mediator output is the
+        behavior value `b'`; &lt;base_value&gt; is `b_0`.
+
+        For type="accumulator" or "attenuator": the mediator output is
+        the rate of change `r`; &lt;base_value&gt; is the base rate
+        `r_0`; &lt;behavior_base&gt; overrides the cell-type default
+        base behavior; &lt;behavior_saturation&gt; is the saturation
+        limit.
+
+        XSD 1.0 cannot conditionally allow &lt;behavior_base&gt; and
+        &lt;behavior_saturation&gt; only when type is
+        accumulator/attenuator — they are permitted here; the
+        constraint is enforced by validateRulesXML.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="type"                type="BehaviorKindValue"/>
+      <xs:element name="behavior_base"       type="DecimalValue"/>
+      <xs:element name="behavior_saturation" type="DecimalValue"/>
+      <xs:element name="base_value"          type="DecimalValue"/>
+      <xs:element name="mediator"            type="MediatorKindValue"/>
+      <xs:element name="decreasing_signals"  type="SignalsBranch"/>
+      <xs:element name="increasing_signals"  type="SignalsBranch"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <!-- ─── <behavior_ruleset> ──────────────────────────────────────── -->
+
+  <xs:complexType name="BehaviorRuleset">
+    <xs:annotation>
+      <xs:documentation>All rules for a single cell type.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="behavior" type="Behavior"
+                  minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <!-- ─── <behavior_rulesets> (root) ──────────────────────────────── -->
+
+  <xs:element name="behavior_rulesets">
+    <xs:annotation>
+      <xs:documentation>Root element. Contains one
+        &lt;behavior_ruleset&gt; per cell type.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="behavior_ruleset" type="BehaviorRuleset"
+                    minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

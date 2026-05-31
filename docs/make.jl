@@ -17,6 +17,7 @@ makedocs(;
         "Manual" => Any[
             "Guide" => "man/guide.md",
             "Features" => "man/features.md",
+            "XSD schema" => "man/schema.md",
             "Examples" => "man/examples.md",
         ],
         "Documentation" => map(
