@@ -108,13 +108,14 @@ function _signalToJSON(s::ElementarySignal)
         "params"          => _signalParams(s),
         "applies_to_dead" => s.applies_to_dead,
         "reference"       => _referenceToJSON(_referenceOf(s)),
+        "id"              => s.id,
     )
 end
 function _signalToJSON(s::AggregatorSignal)
-    return Dict{String,Any}("kind" => "composite", "composite" => "aggregator", "aggregator" => s.aggregator)
+    return Dict{String,Any}("kind" => "composite", "composite" => "aggregator", "aggregator" => s.aggregator, "id" => s.id)
 end
 function _signalToJSON(s::MediatorSignal)
-    return Dict{String,Any}("kind" => "composite", "composite" => "mediator", "mediator" => s.mediator)
+    return Dict{String,Any}("kind" => "composite", "composite" => "mediator", "mediator" => s.mediator, "id" => s.id)
 end
 
 _transformerName(::PartialHillSignal) = "partial_hill"

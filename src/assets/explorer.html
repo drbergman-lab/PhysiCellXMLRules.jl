@@ -18,6 +18,12 @@
   header .source { font-family: ui-monospace, monospace; font-size: 0.85rem; opacity: 0.8; }
   header label { font-size: 0.85rem; }
   header select { font-size: 0.85rem; padding: 2px 6px; }
+  header button {
+    font-size: 0.85rem; padding: 2px 10px; margin-left: auto;
+    background: #f3f4f6; color: #1f2937;
+    border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer;
+  }
+  header button:hover { background: white; }
   main {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 380px;
@@ -54,7 +60,8 @@
   .card .axisrow { display: flex; gap: 0.6em; align-items: center; margin: 0.3em 0; }
   .card .axisrow label { cursor: pointer; }
   .card .params { display: grid; grid-template-columns: max-content 1fr; gap: 2px 0.6em; align-items: center; }
-  .card .params input { width: 6em; }
+  .card .params input,
+  .card .params select { width: 7em; }
   .card .params .label { font-weight: 600; color: #4b5563; font-size: 0.8rem; }
   .card .ref { margin-top: 0.4em; padding-top: 0.4em; border-top: 1px dashed #e5e7eb; }
   .v2note { font-size: 0.75rem; color: #6b7280; padding: 0.3em 0.6em; }
@@ -66,6 +73,7 @@
   <span class="source">{{TITLE}}</span>
   <label>Cell type: <select id="cell-select"></select></label>
   <label>Behavior: <select id="behavior-select"></select></label>
+  <button id="save-btn" type="button" title="Download the current rules state as an XML file">Save XML</button>
 </header>
 <main>
   <div class="left">
@@ -417,6 +425,14 @@ function renderSidebar() {
       vr.appendChild(labelEl(label));
       vr.appendChild(numberInput(() => sig.params[key], v => { sig.params[key] = v; render(); }));
     }
+    // Direction toggle for Linear and Heaviside (the only transformers whose
+    // <type> child controls intrinsic monotonicity).
+    if (sig.transformer === "linear" || sig.transformer === "heaviside") {
+      vr.appendChild(labelEl("direction"));
+      vr.appendChild(selectInput(["increasing", "decreasing"],
+                                 () => sig.params.direction,
+                                 v => { sig.params.direction = v; render(); }));
+    }
     if (sig.reference) {
       const refDiv = document.createElement("div"); refDiv.className = "ref params";
       refDiv.appendChild(labelEl("ref " + sig.reference.type));
@@ -458,6 +474,18 @@ function numberInput(getter, setter) {
   inp.type = "number"; inp.step = "any"; inp.value = String(getter());
   inp.addEventListener("change", () => { const v = parseFloat(inp.value); if (!isNaN(v)) setter(v); });
   return inp;
+}
+function selectInput(options, getter, setter) {
+  const sel = document.createElement("select");
+  const cur = getter();
+  for (const opt of options) {
+    const o = document.createElement("option");
+    o.value = opt; o.textContent = opt;
+    if (opt === cur) o.selected = true;
+    sel.appendChild(o);
+  }
+  sel.addEventListener("change", () => setter(sel.value));
+  return sel;
 }
 // Mirrors the MediatorSignal monotonicity assertion in src/write_xml.jl:
 //   b_- (decreasing max_response)  ≤  b_0 (base_value)  ≤  b_+ (increasing max_response)
@@ -509,6 +537,7 @@ function renderPlot() {
   }
 
   try {
+    const valueLabel = b.type === "setter" ? b.name : "d(" + b.name + ")/dt";
     if (xName && !yName) {
       const [lo, hi] = st.range[xName];
       const xs = linspace(lo, hi, 200);
@@ -516,14 +545,17 @@ function renderPlot() {
       Plotly.react("plot", [{x: xs, y: ys, mode: "lines", line: {width: 2}}], {
         title: b.name + " — " + b.type,
         xaxis: {title: xName},
-        yaxis: {title: b.type === "setter" ? b.name : "d(" + b.name + ")/dt"},
+        yaxis: {title: valueLabel},
         margin: {t: 40, l: 60, r: 20, b: 50},
       }, {responsive: true});
     } else if (xName && yName) {
       const [xlo, xhi] = st.range[xName], [ylo, yhi] = st.range[yName];
       const xs = linspace(xlo, xhi, 60), ys = linspace(ylo, yhi, 60);
       const z = ys.map(yv => xs.map(xv => evalBehavior(b, {...makeValues(), [xName]: xv, [yName]: yv})));
-      Plotly.react("plot", [{x: xs, y: ys, z: z, type: "heatmap"}], {
+      Plotly.react("plot", [{
+        x: xs, y: ys, z: z, type: "heatmap",
+        colorbar: {title: {text: valueLabel, side: "right"}},
+      }], {
         title: b.name + " — " + b.type,
         xaxis: {title: xName},
         yaxis: {title: yName},
@@ -547,6 +579,130 @@ function render() {
   renderSidebar();
   renderPlot();
 }
+
+// ─── Save: round-trip the (possibly edited) in-memory rules to XML ────
+// Mirrors the schema produced by writeXMLRules(path, rulesets) in Julia.
+function xmlEsc(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function fmtNum(x) { return Number.isInteger(x) ? String(x) : String(+x); }
+function rulesToXML(rules) {
+  const out = ['<?xml version="1.0" encoding="UTF-8"?>', "<behavior_rulesets>"];
+  for (const rs of rules.rulesets) {
+    out.push(`  <behavior_ruleset name="${xmlEsc(rs.cell_type)}">`);
+    for (const b of rs.behaviors) writeBehaviorXML(out, b, 4);
+    out.push("  </behavior_ruleset>");
+  }
+  out.push("</behavior_rulesets>");
+  return out.join("\n") + "\n";
+}
+function writeBehaviorXML(out, b, indent) {
+  const p = " ".repeat(indent);
+  out.push(`${p}<behavior name="${xmlEsc(b.name)}">`);
+  out.push(`${p}  <type>${b.type}</type>`);
+  if (b.behavior_base !== null && b.behavior_base !== undefined)
+    out.push(`${p}  <behavior_base>${fmtNum(b.behavior_base)}</behavior_base>`);
+  if (b.behavior_saturation !== null && b.behavior_saturation !== undefined)
+    out.push(`${p}  <behavior_saturation>${fmtNum(b.behavior_saturation)}</behavior_saturation>`);
+  out.push(`${p}  <mediator>${b.mediator.name}</mediator>`);
+  if (b.mediator.base_value !== null && b.mediator.base_value !== undefined)
+    out.push(`${p}  <base_value>${fmtNum(b.mediator.base_value)}</base_value>`);
+  if (b.decreasing) writeBranchXML(out, b.decreasing, "decreasing_signals", indent + 2);
+  if (b.increasing) writeBranchXML(out, b.increasing, "increasing_signals", indent + 2);
+  out.push(`${p}</behavior>`);
+}
+function writeBranchXML(out, branch, label, indent) {
+  const p = " ".repeat(indent);
+  out.push(`${p}<${label}>`);
+  out.push(`${p}  <aggregator>${branch.aggregator}</aggregator>`);
+  if (branch.max_response !== null && branch.max_response !== undefined)
+    out.push(`${p}  <max_response>${fmtNum(branch.max_response)}</max_response>`);
+  // Resolve ids for sibling signals — mirrors Julia _resolveSignalId.
+  // Group by sibling identity (elementary: name; composite: type) and assign
+  // smallest unused positive integers per identity group.
+  const idByIdx = resolveSiblingIds(branch.signals);
+  branch.signals.forEach((sig, i) => writeSignalXML(out, sig, indent + 2, idByIdx[i]));
+  out.push(`${p}</${label}>`);
+}
+function resolveSiblingIds(signals) {
+  const out = new Array(signals.length).fill(null);
+  // Per-identity-key state: {indices: [signal idx], usedIds: Set, needsId: [signal idx]}
+  const groups = new Map();
+  signals.forEach((sig, i) => {
+    const key = sig.kind === "elementary"
+      ? "e:" + sig.name
+      : (sig.composite === "mediator" ? "m" : "a");
+    let g = groups.get(key);
+    if (!g) { g = {indices: [], usedIds: new Set(), needsId: []}; groups.set(key, g); }
+    g.indices.push(i);
+    if (sig.id !== null && sig.id !== undefined) g.usedIds.add(sig.id);
+    else g.needsId.push(i);
+  });
+  for (const g of groups.values()) {
+    if (g.indices.length < 2) {
+      // No sibling collision — preserve explicit ids if any, else no id.
+      for (const i of g.indices) out[i] = signals[i].id ?? null;
+      continue;
+    }
+    let next = 0;
+    const nextUnused = () => {
+      do { next++; } while (g.usedIds.has(next));
+      g.usedIds.add(next);
+      return next;
+    };
+    for (const i of g.indices) {
+      out[i] = (signals[i].id !== null && signals[i].id !== undefined)
+        ? signals[i].id
+        : nextUnused();
+    }
+  }
+  return out;
+}
+function writeSignalXML(out, sig, indent, id) {
+  const p = " ".repeat(indent);
+  if (sig.kind !== "elementary") {
+    out.push(`${p}<!-- TODO: composite ${sig.composite || ""} sub-signal not preserved on save (v2) -->`);
+    return;
+  }
+  const idAttr = (id !== null && id !== undefined) ? ` id="${id}"` : "";
+  out.push(`${p}<signal name="${xmlEsc(sig.name)}" type="${sig.transformer}"${idAttr}>`);
+  out.push(`${p}  <applies_to_dead>${sig.applies_to_dead ? 1 : 0}</applies_to_dead>`);
+  const par = sig.params;
+  switch (sig.transformer) {
+    case "partial_hill":
+    case "hill":
+      out.push(`${p}  <half_max>${fmtNum(par.half_max)}</half_max>`);
+      out.push(`${p}  <hill_power>${fmtNum(par.hill_power)}</hill_power>`);
+      break;
+    case "linear":
+      out.push(`${p}  <signal_min>${fmtNum(par.signal_min)}</signal_min>`);
+      out.push(`${p}  <signal_max>${fmtNum(par.signal_max)}</signal_max>`);
+      out.push(`${p}  <type>${par.direction}</type>`);
+      break;
+    case "heaviside":
+      out.push(`${p}  <threshold>${fmtNum(par.threshold)}</threshold>`);
+      out.push(`${p}  <type>${par.direction}</type>`);
+      break;
+    // identity: no params
+  }
+  if (sig.reference) {
+    out.push(`${p}  <reference>`);
+    out.push(`${p}    <type>${sig.reference.type}</type>`);
+    out.push(`${p}    <value>${fmtNum(sig.reference.value)}</value>`);
+    out.push(`${p}  </reference>`);
+  }
+  out.push(`${p}</signal>`);
+}
+function downloadXML() {
+  const xml = rulesToXML(RULES);
+  const blob = new Blob([xml], {type: "application/xml"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "cell_rules.xml";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+document.getElementById("save-btn").addEventListener("click", downloadXML);
 
 // ─── Boot ─────────────────────────────────────────────────────────────
 populateSelectors();

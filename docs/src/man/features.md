@@ -252,6 +252,44 @@ The validator emits a warning for any accumulator/attenuator without a
 `<behavior_saturation>`, with no `<base_value>`, or with `<max_response>`
 signs that contradict the relaxation semantics.
 
+## Sibling disambiguation: the `id` attribute
+
+`<signal>` elements may carry an optional positive-integer `id`
+attribute. The attribute is **only meaningful when sibling collision is
+possible** — either elementary signals sharing a `name` (e.g.
+`mean_aggregator`'s four `time` Heavisides at different thresholds) or
+two composite `<signal type="aggregator|mediator">` siblings inside the
+same parent.
+
+```xml
+<increasing_signals>
+    <aggregator>mean</aggregator>
+    <max_response>1</max_response>
+    <signal name="time" type="Heaviside" id="1">
+        <threshold>13.5</threshold>
+        <applies_to_dead>0</applies_to_dead>
+    </signal>
+    <signal name="time" type="Heaviside" id="2">
+        <threshold>28.5</threshold>
+        <applies_to_dead>0</applies_to_dead>
+    </signal>
+</increasing_signals>
+```
+
+Semantics:
+
+- **Optional on input.** A file with no `id` attributes parses identically
+  to the previous schema; sibling signals with the same name are kept as
+  distinct typed objects (by position).
+- **Auto-assigned on write.** `writeXMLRules` (typed-tree overload) and the
+  HTML explorer's "Save XML" button auto-assign the smallest unused
+  positive integer per identity group when there's a sibling collision.
+  Files round-trip stably.
+- **Explicit ids are preserved.** If you set `id` on a typed signal, the
+  writer emits exactly that value.
+- **Not needed when unique.** A single occurrence of a name within its
+  parent does not get an `id`.
+
 ## Advanced: hierarchical signals
 
 The standard does go deeper than the two-layer (mediator → aggregator)

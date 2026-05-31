@@ -44,15 +44,24 @@ struct HillTypeParameters
     hill_power::Float64
 end
 
+#=
+Every signal type carries an optional positive-integer `id`. When two
+sibling signals share an identity (same `name` for elementary, same
+composite `type=aggregator|mediator`), the writer auto-assigns the
+smallest unused positive integer at serialization time so the XML
+remains unambiguous. The typed tree is never mutated by this; ids
+materialise on each write.
+=#
 struct HillSignal <: AbstractHillSignal
     name::String
     p::HillTypeParameters
     applies_to_dead::Bool
     reference::Union{Nothing,SignalReference}
-    function HillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
+    id::Union{Nothing,Int}
+    function HillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing; id::Union{Nothing,Integer}=nothing)
         validateReference(reference, half_max)
         p = HillTypeParameters(half_max, hill_power)
-        new(name, p, applies_to_dead, reference)
+        new(name, p, applies_to_dead, reference, isnothing(id) ? nothing : Int(id))
     end
 end
 
@@ -63,10 +72,11 @@ struct PartialHillSignal <: AbstractHillSignal
     p::HillTypeParameters
     applies_to_dead::Bool
     reference::Union{Nothing,SignalReference}
-    function PartialHillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
+    id::Union{Nothing,Int}
+    function PartialHillSignal(name::AbstractString, half_max::Real, hill_power::Real, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing; id::Union{Nothing,Integer}=nothing)
         validateReference(reference, half_max)
         p = HillTypeParameters(half_max, hill_power)
-        new(name, p, applies_to_dead, reference)
+        new(name, p, applies_to_dead, reference, isnothing(id) ? nothing : Int(id))
     end
 end
 
@@ -76,10 +86,11 @@ struct IdentitySignal <: RelativeSignal
     name::String
     applies_to_dead::Bool
     reference::Union{Nothing,SignalReference}
-    function IdentitySignal(name::AbstractString, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing)
-        new(name, applies_to_dead, reference)
+    id::Union{Nothing,Int}
+    function IdentitySignal(name::AbstractString, applies_to_dead::Bool, reference::Union{Nothing,SignalReference}=nothing; id::Union{Nothing,Integer}=nothing)
+        new(name, applies_to_dead, reference, isnothing(id) ? nothing : Int(id))
     end
-end    
+end
 
 struct LinearSignal <: AbsoluteSignal
     name::String
@@ -87,10 +98,11 @@ struct LinearSignal <: AbsoluteSignal
     signal_min::Float64
     signal_max::Float64
     type::String
-    function LinearSignal(name::AbstractString, signal_min::Real, signal_max::Real, applies_to_dead::Bool, type::AbstractString="increasing")
+    id::Union{Nothing,Int}
+    function LinearSignal(name::AbstractString, signal_min::Real, signal_max::Real, applies_to_dead::Bool, type::AbstractString="increasing"; id::Union{Nothing,Integer}=nothing)
         @assert type in ["increasing", "decreasing"] "Linear type must be either 'increasing' or 'decreasing'"
         @assert signal_min < signal_max "Linear signal_min ($signal_min) must be less than signal_max ($signal_max)"
-        new(name, applies_to_dead, signal_min, signal_max, type)
+        new(name, applies_to_dead, signal_min, signal_max, type, isnothing(id) ? nothing : Int(id))
     end
 end
 
@@ -99,9 +111,10 @@ struct HeavisideSignal <: AbsoluteSignal
     applies_to_dead::Bool
     threshold::Float64
     type::String
-    function HeavisideSignal(name::AbstractString, threshold::Real, applies_to_dead::Bool, type::AbstractString="increasing")
+    id::Union{Nothing,Int}
+    function HeavisideSignal(name::AbstractString, threshold::Real, applies_to_dead::Bool, type::AbstractString="increasing"; id::Union{Nothing,Integer}=nothing)
         @assert type in ["increasing", "decreasing"] "Heaviside type must be either 'increasing' or 'decreasing'"
-        new(name, applies_to_dead, threshold, type)
+        new(name, applies_to_dead, threshold, type, isnothing(id) ? nothing : Int(id))
     end
 end
 
@@ -133,13 +146,14 @@ Names are case-insensitive and treat space/underscore as equivalent
 struct AggregatorSignal <: AbstractSignal
     signals::Vector{<:AbstractSignal}
     aggregator::String
-    function AggregatorSignal(signals::Vector{<:AbstractSignal}, aggregator::AbstractString="multivariate_hill")
+    id::Union{Nothing,Int}
+    function AggregatorSignal(signals::Vector{<:AbstractSignal}, aggregator::AbstractString="multivariate_hill"; id::Union{Nothing,Integer}=nothing)
         possible_aggregators = ["multivariate hill", "multivariate_hill", "sum", "product", "mean", "min", "max", "median", "geometric mean", "geometric_mean", "first", "custom"]
         @assert aggregator in possible_aggregators "Aggregator must be one of $(join("'" .* possible_aggregators .* "'", ", ", ", or "))"
-        new(signals, aggregator)
+        new(signals, aggregator, isnothing(id) ? nothing : Int(id))
     end
-    function AggregatorSignal(signal::AbstractSignal; aggregator::AbstractString="multivariate_hill")
-        return AggregatorSignal([signal], aggregator)
+    function AggregatorSignal(signal::AbstractSignal; aggregator::AbstractString="multivariate_hill", id::Union{Nothing,Integer}=nothing)
+        return AggregatorSignal([signal], aggregator; id=id)
     end
 end
 
@@ -171,15 +185,16 @@ struct MediatorSignal <: AbstractSignal
     base::Union{Nothing,Float64}
     max::Union{Nothing,Float64}
     mediator::String
-    function MediatorSignal(decreasing_signal::AggregatorSignal, increasing_signal::AggregatorSignal, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant")
+    id::Union{Nothing,Int}
+    function MediatorSignal(decreasing_signal::AggregatorSignal, increasing_signal::AggregatorSignal, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant"; id::Union{Nothing,Integer}=nothing)
         @assert isnothing(min) || isnothing(base) || min <= base "Mediator min ($min) must be less than or equal to base ($base)"
         @assert isnothing(min) || isnothing(max) || min <= max "Mediator min ($min) must be less than or equal to max ($max)"
         @assert isnothing(base) || isnothing(max) || base <= max "Mediator base ($base) must be less than or equal to max ($max)"
         @assert mediator in ["decreasing_dominant", "decreasing dominant", "increasing_dominant", "increasing dominant", "neutral", "custom"] "Mediator must be one of 'decreasing_dominant', 'increasing_dominant', 'neutral', or 'custom'"
-        new(decreasing_signal, increasing_signal, min, base, max, mediator)
+        new(decreasing_signal, increasing_signal, min, base, max, mediator, isnothing(id) ? nothing : Int(id))
     end
-    function MediatorSignal(decreasing_signals::AbstractVector{<:AbstractSignal}, increasing_signals::AbstractVector{<:AbstractSignal}, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant")
-        return MediatorSignal(AggregatorSignal(decreasing_signals), AggregatorSignal(increasing_signals), min, base, max, mediator)
+    function MediatorSignal(decreasing_signals::AbstractVector{<:AbstractSignal}, increasing_signals::AbstractVector{<:AbstractSignal}, min::Union{Nothing,Real}=nothing, base::Union{Nothing,Real}=nothing, max::Union{Nothing,Real}=nothing, mediator::AbstractString="decreasing_dominant"; id::Union{Nothing,Integer}=nothing)
+        return MediatorSignal(AggregatorSignal(decreasing_signals), AggregatorSignal(increasing_signals), min, base, max, mediator; id=id)
     end
 end
 
@@ -362,22 +377,87 @@ function getBehaviorElement(xml_root::XMLElement, cell_type::String, behavior_na
 end
  
 function addSignalElement!(e::XMLElement, signal::MediatorSignal)
-    signal_element = createElementByAttribute(e, "signal", "type", "mediator")
+    id = _resolveSignalId(e, _isCompositeSibling("mediator"), signal.id)
+    signal_element = createElementByAttribute(e, "signal", "type", "mediator"; require_new=false)
+    isnothing(id) || set_attribute(signal_element, "id", string(id))
     fillSignalElement!(signal_element, signal)
     return
 end
 
 function addSignalElement!(e::XMLElement, signal::AggregatorSignal)
-    signal_element = createElementByAttribute(e, "signal", "type", "aggregator")
+    id = _resolveSignalId(e, _isCompositeSibling("aggregator"), signal.id)
+    signal_element = createElementByAttribute(e, "signal", "type", "aggregator"; require_new=false)
+    isnothing(id) || set_attribute(signal_element, "id", string(id))
     fillSignalElement!(signal_element, signal)
     return
 end
 
 function addSignalElement!(e::XMLElement, signal::ElementarySignal)
-    signal_element = getOrCreateElementByAttribute(e, "signal", "name", signal.name)
+    # A behavior may legitimately carry multiple elementary signals sharing
+    # a name (e.g. mean_aggregator's four "time" Heavisides at different
+    # thresholds). When that happens we auto-assign positive integer `id`
+    # attributes for disambiguation. _resolveSignalId is called BEFORE the
+    # new element exists so the "did this name collide with a prior sibling"
+    # check is unambiguous.
+    id = _resolveSignalId(e, _isElementarySibling(signal.name), signal.id)
+    signal_element = createElementByAttribute(e, "signal", "name", signal.name; require_new=false)
+    isnothing(id) || set_attribute(signal_element, "id", string(id))
     validateOrWriteElement!(signal_element, "applies_to_dead", signal.applies_to_dead)
     fillSignalElement!(signal_element, signal)
     return
+end
+
+# Predicates: a `<signal>` already in `parent` shares an identity with the
+# about-to-be-added signal (and therefore counts toward an id collision).
+_isElementarySibling(name::AbstractString) = el ->
+    attribute(el, "name") == name &&
+    !(attribute(el, "type") in ("aggregator", "mediator"))
+_isCompositeSibling(t::AbstractString) = el -> attribute(el, "type") == t
+
+#=
+Resolve the `id` attribute for an about-to-be-added <signal>:
+
+- If `explicit_id` is given, return it verbatim.
+- Else, find prior siblings matching `is_sibling`. If there are none,
+  return `nothing` (no id needed). If there are some, retroactively
+  assign positive-integer ids to any of them that are missing one
+  (smallest unused first), then return the next unused id for the new
+  signal.
+
+Called BEFORE the new <signal> element is appended to `parent` so that
+the sibling lookup is unambiguous (LightXML doesn't preserve object
+identity across get_elements_by_tagname calls).
+=#
+function _resolveSignalId(parent::XMLElement, is_sibling::Function,
+                          explicit_id::Union{Nothing,Int})
+    isnothing(explicit_id) || return explicit_id
+    prior = XMLElement[]
+    for el in get_elements_by_tagname(parent, "signal")
+        is_sibling(el) && push!(prior, el)
+    end
+    isempty(prior) && return nothing
+    used = Set{Int}()
+    needs_id = XMLElement[]
+    for el in prior
+        a = attribute(el, "id")
+        if isnothing(a)
+            push!(needs_id, el)
+        else
+            v = tryparse(Int, a)
+            isnothing(v) || push!(used, v)
+        end
+    end
+    next = 0
+    function next_unused()
+        next += 1
+        while next in used; next += 1; end
+        push!(used, next)
+        return next
+    end
+    for el in needs_id
+        set_attribute(el, "id", string(next_unused()))
+    end
+    return next_unused()
 end
 
 function fillSignalElement!(e::XMLElement, signal::MediatorSignal)

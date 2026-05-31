@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+    Fixture: rules with multiple distinct raw signal names per behavior.
+    Used to exercise the y-axis option of the HTML explorer and the 2D
+    heatmap path of the Plots recipe.
+-->
+<behavior_rulesets>
+
+    <!--
+        Two-signal AND-logic on one branch:
+        the behavior is pushed up toward b_+ only when oxygen is high
+        AND pressure is low. The `product` aggregator turns the two
+        Hill contributions into a logical AND. `Hill` (not `PartialHill`)
+        is the right transformer here: product over inputs in [0, 1]
+        stays in [0, 1], so the rule's output remains naturally bounded.
+    -->
+    <behavior_ruleset name="oxygen_and_low_pressure">
+        <behavior name="custom:sample">
+            <base_value>0.0</base_value>
+            <increasing_signals>
+                <aggregator>product</aggregator>
+                <max_response>1.0</max_response>
+                <signal name="oxygen" type="Hill">
+                    <half_max>10</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+                <signal name="pressure" type="Hill">
+                    <half_max>0.5</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                    <reference>
+                        <type>decreasing</type>
+                        <value>1.0</value>
+                    </reference>
+                </signal>
+            </increasing_signals>
+        </behavior>
+    </behavior_ruleset>
+
+    <!--
+        Two-signal mediator interplay: oxygen pushes the behavior up,
+        damage pushes it down. Classic decreasing_dominant dynamics on
+        two different raw signals. Each branch uses the default
+        `multivariate_hill` aggregator, which applies the Hill mapping
+        s/(1+s) to the sum of its inputs. Inputs here are `PartialHill`
+        (unbounded) so the aggregator does the bounded mapping itself —
+        feeding it full `Hill` outputs would still parse but conflate
+        two Hill mappings in series.
+    -->
+    <behavior_ruleset name="oxygen_up_damage_down">
+        <behavior name="custom:sample">
+            <base_value>0.0</base_value>
+            <increasing_signals>
+                <max_response>1.0</max_response>
+                <signal name="oxygen" type="PartialHill">
+                    <half_max>10</half_max>
+                    <hill_power>4</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </increasing_signals>
+            <decreasing_signals>
+                <max_response>0.0</max_response>
+                <signal name="damage" type="PartialHill">
+                    <half_max>1.0</half_max>
+                    <hill_power>2</hill_power>
+                    <applies_to_dead>0</applies_to_dead>
+                </signal>
+            </decreasing_signals>
+        </behavior>
+    </behavior_ruleset>
+
+</behavior_rulesets>

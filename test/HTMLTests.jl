@@ -50,3 +50,12 @@ end
     @test_throws AssertionError exportInteractiveHTML(
         joinpath(@__DIR__, "bad.txt"), _FIXTURE)
 end
+
+@testset "exportInteractiveHTML — Save XML plumbing present" begin
+    path = joinpath(@__DIR__, "explorer_save_test.html")
+    exportInteractiveHTML(path, _FIXTURE; force=true)
+    html = read(path, String)
+    @test occursin("id=\"save-btn\"", html)
+    @test occursin("rulesToXML", html)
+    @test occursin("downloadXML", html)
+end

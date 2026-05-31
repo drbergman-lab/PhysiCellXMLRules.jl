@@ -253,3 +253,135 @@ cell_type: accumulator
         signal "time": Hill(half_max=5.0, hill_power=2.0)  [applies_to_dead=false]
         signal "time": Heaviside(decreasing, threshold=30.0)  [applies_to_dead=false]
 ```
+
+## Multi-signal rules and surface plots
+
+The bundled `multi_signal_rules.xml` fixture defines rulesets whose
+behaviors reference more than one raw signal — useful for exercising the
+y-axis option of the explorer and the 2D heatmap path of the Plots
+recipe.
+
+```xml
+<behavior_ruleset name="oxygen_and_low_pressure">
+    <behavior name="custom:sample">
+        <base_value>0.0</base_value>
+        <increasing_signals>
+            <aggregator>product</aggregator>
+            <max_response>1.0</max_response>
+            <signal name="oxygen" type="Hill">
+                <half_max>10</half_max><hill_power>4</hill_power>
+                <applies_to_dead>0</applies_to_dead>
+            </signal>
+            <signal name="pressure" type="Hill">
+                <half_max>0.5</half_max><hill_power>4</hill_power>
+                <applies_to_dead>0</applies_to_dead>
+                <reference>
+                    <type>decreasing</type>
+                    <value>1.0</value>
+                </reference>
+            </signal>
+        </increasing_signals>
+    </behavior>
+</behavior_ruleset>
+```
+
+Two Hill contributions are multiplied (the `product` aggregator turns
+them into AND-logic): the behavior climbs toward `b₊ = 1` only where
+oxygen is high *and* pressure is low. `Hill` (rather than `PartialHill`)
+is the right transformer here — product of inputs in `[0,1]` stays in
+`[0,1]`, so the rule's output is naturally bounded.
+
+(The fixture's second ruleset, `oxygen_up_damage_down`, uses
+`PartialHill` instead because each branch's default
+`multivariate_hill` aggregator applies the Hill mapping `Σx/(1+Σx)`
+itself — feeding it already-Hill-mapped inputs would conflate two Hill
+mappings in series. Match transformer choice to aggregator: bounded
+aggregators like `product` / `min` / `max` / `mean` are happy with
+`Hill`; the `multivariate_hill` aggregator wants `PartialHill`.)
+
+From a REPL with `Plots` loaded:
+
+```julia
+using Plots, PhysiCellXMLRules
+rs = parseRulesXML("test/assets/multi_signal_rules.xml")
+b = rs[1].behaviors[1]
+plot(b; vary=("oxygen", "pressure"),
+       signal_ranges=Dict("oxygen"=>(0,40), "pressure"=>(0,1)))
+```
+
+The same behavior in the HTML explorer assigns one signal to x, the
+other to y, and renders a Plotly heatmap with a labelled colorbar. The
+high-output region is in the corner where oxygen is high and pressure
+is low.
+
+## Evaluating a rule programmatically
+
+`evaluateBehavior` computes a behavior's output (or rate, for
+accumulator/attenuator) at any set of raw signal values:
+
+```julia
+rs = parseRulesXML("test/assets/extended_cell_rules.xml")
+by = Dict(r.cell_type => r for r in rs)
+tent = by["tent"].behaviors[1]
+
+# Sweep the tent rule across "time" 0..60 and print the curve:
+for t in 0:5:60
+    v = evaluateBehavior(tent, Dict("time" => float(t)); b_base=0.0)
+    println("time=", lpad(t,2), "  ->  ", round(v; digits=3))
+end
+```
+
+`b_min` / `b_base` / `b_max` keyword arguments override the mediator's
+stored `min` / `base` / `max` values for the call, so you can explore
+"what if I changed the max_response without editing the XML?" without
+mutating the tree.
+
+## Editing rules and saving them back
+
+`writeXMLRules` has a typed-tree overload that's the inverse of
+`parseRulesXML`. Modifications you make in Julia (or in the HTML
+explorer, where the Save XML button does the same thing in JS) round-trip
+faithfully — including auto-assigned `id` attributes for sibling
+disambiguation (see the [Features](@ref Features) page).
+
+```julia
+rs = parseRulesXML("config/cell_rules.xml")
+# Bump the half_max on every elementary Hill signal in every behavior
+# (just to demonstrate; replace with whatever edit you actually need)
+for r in rs, b in r.behaviors
+    # …reach in and mutate the typed tree…
+end
+writeXMLRules("config/cell_rules.modified.xml", rs; force=true)
+```
+
+## Opening the interactive explorer
+
+For a hands-on view that's nice to share with collaborators (no Julia
+runtime needed to open it), generate a single HTML file:
+
+```julia
+using PhysiCellXMLRules
+exportInteractiveHTML("explorer.html", "config/cell_rules.xml"; force=true)
+# then:  $ open explorer.html
+```
+
+What you get in the browser:
+
+- A header with cell-type and behavior dropdowns plus a **Save XML**
+  button.
+- A plot pane — Plotly line for 1D, heatmap with labelled colorbar for 2D.
+- Sidebar with a behavior-meta card (editable mediator scalars
+  `b₀`/`b₋`/`b₊` with monotonicity enforced exactly as in
+  `MediatorSignal`).
+- Section headers for `increasing_signals` / `decreasing_signals` (only
+  the populated branches appear), each labelled with its aggregator.
+- One card per elementary signal: axis selector (x / y / fixed),
+  value or range inputs, editable transformer parameters
+  (`half_max`, `hill_power`, `threshold`, `signal_min`/`signal_max`,
+  reference value), and a direction toggle for Linear/Heaviside.
+
+Behaviors that use custom mediators / aggregators or hierarchical
+sub-signals show a yellow banner in place of the plot — the parser and
+validator handle them fine, but the in-browser evaluator does not
+(custom hooks live in PhysiCell's `custom.cpp`; hierarchical signals
+are slated for v2 of the explorer).

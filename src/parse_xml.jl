@@ -127,19 +127,27 @@ function _parseAggregatorBody(parent_e::XMLElement, where_str::AbstractString)
     for signal_e in get_elements_by_tagname(parent_e, "signal")
         push!(signals, _parseSignal(signal_e, where_str))
     end
-    return AggregatorSignal(signals, canonical), max_response
+    id = _parseIdAttribute(parent_e, where_str)
+    return AggregatorSignal(signals, canonical; id=id), max_response
 end
 
 function _parseSignal(signal_e::XMLElement, where_str::AbstractString)
     type_attr = attribute(signal_e, "type")
     raw_type = isnothing(type_attr) ? "partial_hill" : type_attr
+    id = _parseIdAttribute(signal_e, where_str)
 
     canonical_composite = _match(raw_type, _COMPOSITE_TYPES)
     if canonical_composite == "mediator"
-        return _parseMediatorBody(signal_e, "nested mediator signal in $where_str")
+        m = _parseMediatorBody(signal_e, "nested mediator signal in $where_str")
+        return isnothing(id) ? m :
+            MediatorSignal(m.decreasing_signal, m.increasing_signal, m.min, m.base, m.max, m.mediator; id=id)
     elseif canonical_composite == "aggregator"
         agg, _ = _parseAggregatorBody(signal_e, "nested aggregator signal in $where_str")
-        return agg
+        # _parseAggregatorBody already attached id from the wrapper <signal>'s
+        # parent element; for a nested <signal type="aggregator"> the id lives
+        # on the <signal> wrapper, not on a separate inner element, so re-emit.
+        return isnothing(id) ? agg :
+            AggregatorSignal(agg.signals, agg.aggregator; id=id)
     end
 
     canonical_elem = _match(raw_type, _ELEMENTARY_TYPES)
@@ -157,25 +165,33 @@ function _parseSignal(signal_e::XMLElement, where_str::AbstractString)
         hill_power = _parseRequiredFloat(signal_e, "hill_power", signal_name, where_str)
         reference = SignalReference(signal_e)
         T = canonical_elem == "partial_hill" ? PartialHillSignal : HillSignal
-        return T(signal_name, half_max, hill_power, applies_to_dead, reference)
+        return T(signal_name, half_max, hill_power, applies_to_dead, reference; id=id)
     elseif canonical_elem == "identity"
         reference = SignalReference(signal_e)
-        return IdentitySignal(signal_name, applies_to_dead, reference)
+        return IdentitySignal(signal_name, applies_to_dead, reference; id=id)
     elseif canonical_elem == "linear"
         signal_min = _parseRequiredFloat(signal_e, "signal_min", signal_name, where_str)
         signal_max = _parseRequiredFloat(signal_e, "signal_max", signal_name, where_str)
         direction = _parseDirectionChild(signal_e, signal_name, where_str)
-        return LinearSignal(signal_name, signal_min, signal_max, applies_to_dead, direction)
+        return LinearSignal(signal_name, signal_min, signal_max, applies_to_dead, direction; id=id)
     elseif canonical_elem == "heaviside"
         threshold = _parseRequiredFloat(signal_e, "threshold", signal_name, where_str)
         direction = _parseDirectionChild(signal_e, signal_name, where_str)
-        return HeavisideSignal(signal_name, threshold, applies_to_dead, direction)
+        return HeavisideSignal(signal_name, threshold, applies_to_dead, direction; id=id)
     end
 end
 
 function _childContent(parent_e::XMLElement, child_name::AbstractString, default::AbstractString)
     child = find_element(parent_e, child_name)
     return isnothing(child) ? default : strip(content(child))
+end
+
+function _parseIdAttribute(e::XMLElement, where_str::AbstractString)
+    raw = attribute(e, "id")
+    isnothing(raw) && return nothing
+    v = tryparse(Int, raw)
+    (isnothing(v) || v <= 0) && throw(ArgumentError("Invalid id=\"$raw\" on <signal> in $where_str (must be a positive integer)"))
+    return v
 end
 
 function _parseFloatChild(parent_e::XMLElement, child_name::AbstractString)
@@ -212,4 +228,35 @@ function _parseDirectionChild(parent_e::XMLElement, signal_name::AbstractString,
     canonical = _match(raw, _DIRECTIONS)
     isnothing(canonical) && throw(ArgumentError("Signal '$signal_name' in $where_str has invalid <type>$raw</type> (expected 'increasing' or 'decreasing')"))
     return canonical
+end
+
+# ─── writeXMLRules: inverse of parseRulesXML ───────────────────────────────
+# Defined here (not in write_xml.jl) because it dispatches on BehaviorRuleset,
+# which lives in this file.
+
+"""
+    writeXMLRules(path_to_xml::AbstractString, rulesets::AbstractVector{BehaviorRuleset}; force::Bool=false)
+
+Serialise an already-parsed [`BehaviorRuleset`](@ref) tree back to a rules
+XML file at `path_to_xml`. Pair with [`parseRulesXML`](@ref) to round-trip
+a rules file, or use it to save modifications you've made to the typed
+tree in memory.
+
+Hierarchical sub-signals are still v2; for now this overload supports the
+elementary-signal shape that the parser and explorer both produce.
+"""
+function writeXMLRules(path_to_xml::AbstractString, rulesets::AbstractVector{BehaviorRuleset};
+                       force::Bool=false)
+    @assert splitext(path_to_xml)[2] == ".xml" "The path to the XML file must end with .xml. Got $(path_to_xml)"
+    @assert force || !isfile(path_to_xml) "The path to the XML file must not exist. $(path_to_xml) is a file. Use writeXMLRules(...; force=true) to overwrite it."
+    xml_doc = XMLDocument()
+    xml_root = create_root(xml_doc, "behavior_rulesets")
+    for rs in rulesets
+        for b in rs.behaviors
+            addRule!(xml_root, rs.cell_type, b)
+        end
+    end
+    save_file(xml_doc, path_to_xml)
+    free(xml_doc)
+    return path_to_xml
 end

@@ -16,4 +16,6 @@ end
     include("./EvaluateRulesTests.jl")
     include("./RecipesTests.jl")
     include("./HTMLTests.jl")
+    include("./MultiSignalTests.jl")
+    include("./RoundTripTests.jl")
 end
