@@ -29,6 +29,18 @@ end
     @test all(0 .≤ ys .≤ 1.0 + 1e-9)
 end
 
+@testset "_doseResponse1D — multi-occurrence range aggregation (tent)" begin
+    # tent has two `time` Linear signals — increasing on (10,20) and on (40,50).
+    # The default range should span both, and the lower bound should be ≥ 0.
+    rulesets = parseRulesXML(_FIXTURE)
+    by = Dict(rs.cell_type => rs for rs in rulesets)
+    b = by["tent"].behaviors[1]
+    xs, _ = _doseResponse1D(b; vary="time", n=20)
+    @test xs[1]   ≥ 0
+    @test xs[1]   < 10                # below the first linear's signal_min
+    @test xs[end] > 50                # past the second linear's signal_max
+end
+
 @testset "_doseResponse2D — sanity over a hand-built behavior" begin
     # Two distinct raw signals 'x' (increasing) and 'y' (increasing); use
     # 'sum' aggregators so a single signal passes through cleanly.

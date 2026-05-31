@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{TITLE}}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0; padding: 0; color: #1f2937; background: #f9fafb;
+  }
+  header {
+    background: #1f2937; color: #f3f4f6; padding: 0.6em 1em;
+    display: flex; gap: 1em; align-items: baseline; flex-wrap: wrap;
+  }
+  header h1 { font-size: 1rem; margin: 0; font-weight: 600; }
+  header .source { font-family: ui-monospace, monospace; font-size: 0.85rem; opacity: 0.8; }
+  header label { font-size: 0.85rem; }
+  header select { font-size: 0.85rem; padding: 2px 6px; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-rows: 1fr;
+    gap: 1em; padding: 1em;
+    height: calc(100vh - 56px);
+  }
+  .left { display: flex; flex-direction: column; gap: 0.5em; min-height: 0; }
+  #plot, #banner { background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.5em; }
+  #plot { flex: 1; min-height: 300px; }
+  #banner { display: none; padding: 1em; color: #92400e; background: #fef3c7; border-color: #fde68a; }
+  #banner.show { display: block; }
+  #sidebar { overflow-y: auto; padding-right: 4px; min-height: 0; }
+  .meta { background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.6em; margin-bottom: 0.6em; font-size: 0.85rem; }
+  .meta h2 { margin: 0 0 0.3em 0; font-size: 0.95rem; }
+  .meta dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 2px 0.6em; }
+  .meta dt { font-weight: 600; color: #4b5563; }
+  .meta input.scalar { width: 6em; }
+  .branch-section {
+    margin: 0.8em 0 0.4em 0; padding: 0.45em 0.7em;
+    background: #e0e7ff; border: 1px solid #c7d2fe; border-radius: 6px;
+    display: flex; gap: 0.6em; align-items: baseline; flex-wrap: wrap;
+  }
+  .branch-section h2 { margin: 0; font-size: 0.95rem; }
+  .branch-section .agg { font-size: 0.8rem; color: #4338ca; }
+  .card {
+    background: white; border: 1px solid #e5e7eb; border-radius: 6px;
+    padding: 0.6em; margin-bottom: 0.6em; font-size: 0.85rem;
+  }
+  .card h3 {
+    margin: 0 0 0.4em 0; font-size: 0.9rem; display: flex; gap: 0.5em; align-items: baseline;
+  }
+  .card h3 .branch { font-size: 0.75rem; color: #6b7280; font-weight: normal; }
+  .card .axisrow { display: flex; gap: 0.6em; align-items: center; margin: 0.3em 0; }
+  .card .axisrow label { cursor: pointer; }
+  .card .params { display: grid; grid-template-columns: max-content 1fr; gap: 2px 0.6em; align-items: center; }
+  .card .params input { width: 6em; }
+  .card .params .label { font-weight: 600; color: #4b5563; font-size: 0.8rem; }
+  .card .ref { margin-top: 0.4em; padding-top: 0.4em; border-top: 1px dashed #e5e7eb; }
+  .v2note { font-size: 0.75rem; color: #6b7280; padding: 0.3em 0.6em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>PhysiCell rule explorer</h1>
+  <span class="source">{{TITLE}}</span>
+  <label>Cell type: <select id="cell-select"></select></label>
+  <label>Behavior: <select id="behavior-select"></select></label>
+</header>
+<main>
+  <div class="left">
+    <div id="banner"></div>
+    <div id="plot"></div>
+  </div>
+  <div id="sidebar"></div>
+</main>
+<script>
+"use strict";
+
+// ─── Data ─────────────────────────────────────────────────────────────
+const RULES = {{RULES_JSON}};
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+function linspace(lo, hi, n) {
+  const out = new Array(n);
+  const step = (hi - lo) / (n - 1);
+  for (let i = 0; i < n; ++i) out[i] = lo + i * step;
+  return out;
+}
+
+const DEFAULT_BMIN = 0.1, DEFAULT_BBASE = 1.0, DEFAULT_BMAX = 10.0;
+
+// ─── Evaluator (mirror of src/evaluate.jl) ────────────────────────────
+class UnsupportedRule extends Error {}
+
+function evalSignal(sig, raw) {
+  const p = sig.params;
+  let x = raw, gamma;
+  switch (sig.transformer) {
+    case "partial_hill": {
+      gamma = p.half_max;
+      if (sig.reference) {
+        if (sig.reference.type === "increasing") {
+          x = Math.max(raw - sig.reference.value, 0);
+          gamma = gamma - sig.reference.value;
+        } else {
+          x = Math.max(sig.reference.value - raw, 0);
+          gamma = sig.reference.value - gamma;
+        }
+      }
+      if (gamma <= 0) return 0;
+      return Math.pow(x / gamma, p.hill_power);
+    }
+    case "hill": {
+      gamma = p.half_max;
+      if (sig.reference) {
+        if (sig.reference.type === "increasing") {
+          x = Math.max(raw - sig.reference.value, 0);
+          gamma = gamma - sig.reference.value;
+        } else {
+          x = Math.max(sig.reference.value - raw, 0);
+          gamma = sig.reference.value - gamma;
+        }
+      }
+      if (gamma <= 0) return 0;
+      const z = Math.pow(x / gamma, p.hill_power);
+      return z / (1 + z);
+    }
+    case "identity": {
+      if (sig.reference) {
+        x = sig.reference.type === "increasing"
+            ? Math.max(raw - sig.reference.value, 0)
+            : Math.max(sig.reference.value - raw, 0);
+      }
+      return x;
+    }
+    case "linear": {
+      const w = p.signal_max - p.signal_min;
+      if (w <= 0) return 0;
+      const t = p.direction === "increasing"
+        ? (raw - p.signal_min) / w
+        : (p.signal_max - raw) / w;
+      return Math.min(1, Math.max(0, t));
+    }
+    case "heaviside": {
+      return p.direction === "increasing"
+        ? (raw >= p.threshold ? 1 : 0)
+        : (raw <= p.threshold ? 1 : 0);
+    }
+    default:
+      throw new UnsupportedRule("unknown transformer: " + sig.transformer);
+  }
+}
+
+function evalAggregator(agg, signalValues) {
+  if (!agg || !agg.signals.length) return 0;
+  const xs = agg.signals.map(s => {
+    if (s.kind !== "elementary") {
+      throw new UnsupportedRule("hierarchical sub-signal (v2)");
+    }
+    return evalSignal(s, signalValues[s.name]);
+  });
+  switch (agg.aggregator) {
+    case "multivariate_hill": { const s = xs.reduce((a,b)=>a+b,0); return s/(1+s); }
+    case "sum":             return xs.reduce((a,b)=>a+b, 0);
+    case "product":         return xs.reduce((a,b)=>a*b, 1);
+    case "min":             return Math.min(...xs);
+    case "max":             return Math.max(...xs);
+    case "mean":            return xs.reduce((a,b)=>a+b,0) / xs.length;
+    case "median": {
+      const sorted = [...xs].sort((a,b)=>a-b);
+      const m = Math.floor(sorted.length/2);
+      return sorted.length % 2 ? sorted[m] : 0.5*(sorted[m-1]+sorted[m]);
+    }
+    case "geometric_mean":  return Math.pow(xs.reduce((a,b)=>a*b,1), 1/xs.length);
+    case "first":           return xs[0];
+    case "custom":          throw new UnsupportedRule("custom aggregator (PhysiCell custom.cpp)");
+    default:                throw new UnsupportedRule("unknown aggregator: " + agg.aggregator);
+  }
+}
+
+function evalBehavior(behavior, signalValues) {
+  const m = behavior.mediator;
+  const D = evalAggregator(behavior.decreasing, signalValues);
+  const U = evalAggregator(behavior.increasing, signalValues);
+  const bm = behavior.decreasing?.max_response ?? DEFAULT_BMIN;
+  const b0 = m.base_value ?? DEFAULT_BBASE;
+  const bM = behavior.increasing?.max_response ?? DEFAULT_BMAX;
+  switch (m.name) {
+    case "decreasing_dominant": return D*bm + (1-D)*((1-U)*b0 + U*bM);
+    case "increasing_dominant": return U*bM + (1-U)*((1-D)*b0 + D*bm);
+    case "neutral":             return b0 + D*(bm - b0) + U*(bM - b0);
+    case "custom":              throw new UnsupportedRule("custom mediator (PhysiCell custom.cpp)");
+    default:                    throw new UnsupportedRule("unknown mediator: " + m.name);
+  }
+}
+
+// ─── Suggested ranges (mirror of suggestSignalRange) ──────────────────
+function hillLikeRange(gamma, ref) {
+  if (!ref) return [0, 3 * gamma];
+  const s0 = ref.value, delta = Math.abs(gamma - s0);
+  return ref.type === "increasing"
+    ? [s0, s0 + 3 * delta]              // active above s0
+    : [s0 - 3 * delta, s0];             // active below s0
+}
+function suggestRange(sig) {
+  const p = sig.params;
+  switch (sig.transformer) {
+    case "partial_hill":
+    case "hill":      return hillLikeRange(p.half_max, sig.reference);
+    case "identity": {
+      const base = sig.reference ? sig.reference.value : 0;
+      return [base, base + 1];
+    }
+    case "linear": {
+      const w = p.signal_max - p.signal_min;
+      return [p.signal_min - 0.2*w, p.signal_max + 0.2*w];
+    }
+    case "heaviside":
+      return [p.threshold - 1, p.threshold + 1];
+  }
+  return [0, 1];
+}
+
+// ─── Elementary signal helpers ────────────────────────────────────────
+function elementarySignals(behavior) {
+  const out = [];
+  for (const branch of [behavior.increasing, behavior.decreasing]) {
+    if (!branch) continue;
+    for (const s of branch.signals) if (s.kind === "elementary") out.push(s);
+  }
+  return out;
+}
+function distinctNames(behavior) {
+  const seen = [];
+  for (const s of elementarySignals(behavior)) if (!seen.includes(s.name)) seen.push(s.name);
+  return seen;
+}
+
+// ─── UI state ─────────────────────────────────────────────────────────
+const ui = {
+  cellIdx: 0,
+  behaviorIdx: 0,
+  // per-(cell,behavior) keyed state so editing isn't lost when toggling:
+  perBehavior: new Map(), // key: "cellIdx:behaviorIdx" → {axis, value, range}
+};
+
+function behaviorKey() { return ui.cellIdx + ":" + ui.behaviorIdx; }
+function currentBehavior() {
+  return RULES.rulesets[ui.cellIdx].behaviors[ui.behaviorIdx];
+}
+
+// For a raw signal name, aggregate the suggested ranges across every
+// elementary occurrence sharing that name (a single name often appears on
+// both the increasing and decreasing branches with different transformer
+// params, e.g. the `tent` and `vee` rulesets). Default the lower bound to
+// 0 — most PhysiCell signals are non-negative; the user can override.
+function suggestNameRange(b, name) {
+  const sigs = elementarySignals(b).filter(s => s.name === name);
+  let lo = +Infinity, hi = -Infinity;
+  for (const s of sigs) {
+    const [l, h] = suggestRange(s);
+    if (l < lo) lo = l;
+    if (h > hi) hi = h;
+  }
+  return [Math.max(0, lo), hi];
+}
+
+function ensureBehaviorState() {
+  const k = behaviorKey();
+  if (ui.perBehavior.has(k)) return ui.perBehavior.get(k);
+  const b = currentBehavior();
+  const names = distinctNames(b);
+  const st = { axis: {}, value: {}, range: {} };
+  names.forEach((name, i) => {
+    st.axis[name] = i === 0 ? "x" : (i === 1 ? "y" : "fixed");
+    const [lo, hi] = suggestNameRange(b, name);
+    st.range[name] = [lo, hi];
+    st.value[name] = 0.5*(lo+hi);
+  });
+  ui.perBehavior.set(k, st);
+  return st;
+}
+
+// ─── Selectors at top ─────────────────────────────────────────────────
+function populateSelectors() {
+  const csel = document.getElementById("cell-select");
+  csel.innerHTML = "";
+  RULES.rulesets.forEach((rs, i) => {
+    const opt = document.createElement("option"); opt.value = i; opt.textContent = rs.cell_type;
+    csel.appendChild(opt);
+  });
+  csel.addEventListener("change", () => { ui.cellIdx = +csel.value; ui.behaviorIdx = 0; populateBehaviorSelect(); render(); });
+  populateBehaviorSelect();
+}
+function populateBehaviorSelect() {
+  const bsel = document.getElementById("behavior-select");
+  bsel.innerHTML = "";
+  RULES.rulesets[ui.cellIdx].behaviors.forEach((b, i) => {
+    const opt = document.createElement("option"); opt.value = i; opt.textContent = b.name;
+    bsel.appendChild(opt);
+  });
+  bsel.value = ui.behaviorIdx;
+  bsel.onchange = () => { ui.behaviorIdx = +bsel.value; render(); };
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────
+function renderSidebar() {
+  const b = currentBehavior();
+  const st = ensureBehaviorState();
+  const root = document.getElementById("sidebar");
+  root.innerHTML = "";
+
+  // Behavior meta card
+  const meta = document.createElement("div"); meta.className = "meta";
+  meta.innerHTML = `<h2>${b.name}</h2>`;
+  const dl = document.createElement("dl");
+  function textRow(dt, text) {
+    const d = document.createElement("dt"); d.textContent = dt; dl.appendChild(d);
+    const v = document.createElement("dd"); v.textContent = text; dl.appendChild(v);
+  }
+  function scalarRow(label, getter, setter) {
+    const d = document.createElement("dt"); d.textContent = label; dl.appendChild(d);
+    const v = document.createElement("dd");
+    const inp = document.createElement("input");
+    inp.type = "number"; inp.step = "any"; inp.className = "scalar";
+    inp.value = String(getter());
+    inp.addEventListener("change", () => {
+      const x = parseFloat(inp.value);
+      if (isNaN(x)) { inp.value = String(getter()); return; }
+      const old = getter();
+      setter(x);
+      const err = validateMediatorScalars(currentBehavior());
+      if (err) {
+        setter(old);
+        inp.value = String(old);
+        showValidationBanner(err);
+        return;
+      }
+      render();
+    });
+    v.appendChild(inp);
+    dl.appendChild(v);
+  }
+  textRow("type",     b.type);
+  textRow("mediator", b.mediator.name);
+  scalarRow("base (b₀)", () => b.mediator.base_value ?? DEFAULT_BBASE,
+                          v => b.mediator.base_value = v);
+  if (b.decreasing)
+    scalarRow("dec max (b₋)", () => b.decreasing.max_response ?? DEFAULT_BMIN,
+                              v => b.decreasing.max_response = v);
+  if (b.increasing)
+    scalarRow("inc max (b₊)", () => b.increasing.max_response ?? DEFAULT_BMAX,
+                              v => b.increasing.max_response = v);
+  if (b.type !== "setter") {
+    scalarRow("behavior_base",       () => b.behavior_base ?? 0,
+                                      v => b.behavior_base = v);
+    scalarRow("behavior_saturation", () => b.behavior_saturation ?? 1,
+                                      v => b.behavior_saturation = v);
+  }
+  meta.appendChild(dl);
+  root.appendChild(meta);
+
+  // Signal cards, grouped by branch (only branches with elementary
+  // signals get a section header).
+  const names = distinctNames(b);
+  const canY = names.length >= 2;
+  let cardIdx = 0;
+
+  function renderBranch(branchObj, label) {
+    if (!branchObj || !branchObj.signals) return;
+    const elemSigs = branchObj.signals.filter(s => s.kind === "elementary");
+    if (!elemSigs.length) return;
+
+    const section = document.createElement("div");
+    section.className = "branch-section";
+    section.innerHTML = `<h2>${label}</h2><div class="agg">aggregator: ${branchObj.aggregator}</div>`;
+    root.appendChild(section);
+
+    for (const sig of elemSigs) renderSignalCard(sig, cardIdx++);
+  }
+
+  function renderSignalCard(sig, idx) {
+    const card = document.createElement("div"); card.className = "card";
+    card.innerHTML = `<h3>${sig.name} <span class="branch">${transformerLabel(sig)}</span></h3>`;
+
+    // Axis row
+    const ar = document.createElement("div"); ar.className = "axisrow";
+    const ridName = `axis-${idx}-${behaviorKey()}`;
+    function radio(value, label, disabled) {
+      const r = document.createElement("input"); r.type = "radio"; r.name = ridName; r.value = value;
+      r.checked = st.axis[sig.name] === value;
+      if (disabled) r.disabled = true;
+      r.addEventListener("change", () => setAxis(sig.name, value));
+      const l = document.createElement("label"); l.appendChild(r); l.append(" " + label);
+      return l;
+    }
+    ar.appendChild(radio("x", "x"));
+    ar.appendChild(radio("y", "y", !canY));
+    ar.appendChild(radio("fixed", "fixed"));
+    card.appendChild(ar);
+
+    // Value or range
+    const vr = document.createElement("div"); vr.className = "params";
+    const role = st.axis[sig.name];
+    if (role === "fixed") {
+      vr.appendChild(labelEl("value"));
+      vr.appendChild(numberInput(() => st.value[sig.name], v => { st.value[sig.name] = v; render(); }));
+    } else {
+      vr.appendChild(labelEl(role + " min"));
+      vr.appendChild(numberInput(() => st.range[sig.name][0], v => { st.range[sig.name][0] = v; render(); }));
+      vr.appendChild(labelEl(role + " max"));
+      vr.appendChild(numberInput(() => st.range[sig.name][1], v => { st.range[sig.name][1] = v; render(); }));
+    }
+    const params = paramSpec(sig);
+    for (const [key, label] of params) {
+      vr.appendChild(labelEl(label));
+      vr.appendChild(numberInput(() => sig.params[key], v => { sig.params[key] = v; render(); }));
+    }
+    if (sig.reference) {
+      const refDiv = document.createElement("div"); refDiv.className = "ref params";
+      refDiv.appendChild(labelEl("ref " + sig.reference.type));
+      refDiv.appendChild(numberInput(() => sig.reference.value, v => { sig.reference.value = v; render(); }));
+      card.appendChild(vr); card.appendChild(refDiv);
+    } else {
+      card.appendChild(vr);
+    }
+    root.appendChild(card);
+  }
+
+  renderBranch(b.increasing, "increasing_signals");
+  renderBranch(b.decreasing, "decreasing_signals");
+}
+
+// What the small subtitle on a signal card should say. Intrinsic to the
+// transformer; the branch is conveyed by the section header above.
+function transformerLabel(sig) {
+  const t = sig.transformer;
+  if (t === "linear" || t === "heaviside") return `${t} (${sig.params.direction})`;
+  if (sig.reference) return `${t} (ref ${sig.reference.type})`;
+  return t;
+}
+
+function paramSpec(sig) {
+  switch (sig.transformer) {
+    case "partial_hill":
+    case "hill":      return [["half_max", "half_max"], ["hill_power", "hill_power"]];
+    case "linear":    return [["signal_min", "signal_min"], ["signal_max", "signal_max"]];
+    case "heaviside": return [["threshold", "threshold"]];
+    case "identity":  return [];
+  }
+  return [];
+}
+
+function labelEl(t) { const e = document.createElement("span"); e.className = "label"; e.textContent = t; return e; }
+function numberInput(getter, setter) {
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.step = "any"; inp.value = String(getter());
+  inp.addEventListener("change", () => { const v = parseFloat(inp.value); if (!isNaN(v)) setter(v); });
+  return inp;
+}
+// Mirrors the MediatorSignal monotonicity assertion in src/write_xml.jl:
+//   b_- (decreasing max_response)  ≤  b_0 (base_value)  ≤  b_+ (increasing max_response)
+function validateMediatorScalars(b) {
+  const b0 = b.mediator.base_value ?? DEFAULT_BBASE;
+  if (b.decreasing) {
+    const bm = b.decreasing.max_response ?? DEFAULT_BMIN;
+    if (bm > b0) return `dec max (b₋ = ${bm}) must be ≤ base (b₀ = ${b0})`;
+  }
+  if (b.increasing) {
+    const bM = b.increasing.max_response ?? DEFAULT_BMAX;
+    if (b0 > bM) return `base (b₀ = ${b0}) must be ≤ inc max (b₊ = ${bM})`;
+  }
+  return null;
+}
+
+function showValidationBanner(msg) {
+  const banner = document.getElementById("banner");
+  banner.textContent = msg;
+  banner.classList.add("show");
+}
+
+function setAxis(name, role) {
+  const st = ensureBehaviorState();
+  // x and y are exclusive — if some other name already has role, demote it to fixed
+  if (role === "x" || role === "y") {
+    for (const k in st.axis) if (k !== name && st.axis[k] === role) st.axis[k] = "fixed";
+  }
+  st.axis[name] = role;
+  render();
+}
+
+// ─── Plot ─────────────────────────────────────────────────────────────
+function renderPlot() {
+  const b = currentBehavior();
+  const st = ensureBehaviorState();
+  const banner = document.getElementById("banner");
+  banner.classList.remove("show"); banner.textContent = "";
+
+  const names = distinctNames(b);
+  const xName = names.find(n => st.axis[n] === "x");
+  const yName = names.find(n => st.axis[n] === "y");
+
+  // Build signal-values map for evaluation
+  function makeValues() {
+    const sv = {};
+    for (const n of names) if (st.axis[n] === "fixed") sv[n] = st.value[n];
+    return sv;
+  }
+
+  try {
+    if (xName && !yName) {
+      const [lo, hi] = st.range[xName];
+      const xs = linspace(lo, hi, 200);
+      const ys = xs.map(xv => evalBehavior(b, {...makeValues(), [xName]: xv}));
+      Plotly.react("plot", [{x: xs, y: ys, mode: "lines", line: {width: 2}}], {
+        title: b.name + " — " + b.type,
+        xaxis: {title: xName},
+        yaxis: {title: b.type === "setter" ? b.name : "d(" + b.name + ")/dt"},
+        margin: {t: 40, l: 60, r: 20, b: 50},
+      }, {responsive: true});
+    } else if (xName && yName) {
+      const [xlo, xhi] = st.range[xName], [ylo, yhi] = st.range[yName];
+      const xs = linspace(xlo, xhi, 60), ys = linspace(ylo, yhi, 60);
+      const z = ys.map(yv => xs.map(xv => evalBehavior(b, {...makeValues(), [xName]: xv, [yName]: yv})));
+      Plotly.react("plot", [{x: xs, y: ys, z: z, type: "heatmap"}], {
+        title: b.name + " — " + b.type,
+        xaxis: {title: xName},
+        yaxis: {title: yName},
+        margin: {t: 40, l: 60, r: 20, b: 50},
+      }, {responsive: true});
+    } else {
+      banner.textContent = "Pick a signal to vary on x (and optionally y).";
+      banner.classList.add("show");
+      Plotly.purge("plot");
+    }
+  } catch (err) {
+    banner.textContent = "Cannot plot this rule: " + err.message + (err instanceof UnsupportedRule
+      ? "  (Hierarchical sub-signals are slated for v2; custom mediators/aggregators live in PhysiCell's custom.cpp.)"
+      : "");
+    banner.classList.add("show");
+    Plotly.purge("plot");
+  }
+}
+
+function render() {
+  renderSidebar();
+  renderPlot();
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────
+populateSelectors();
+render();
+</script>
+</body>
+</html>

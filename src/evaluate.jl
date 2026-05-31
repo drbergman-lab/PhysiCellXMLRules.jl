@@ -265,18 +265,29 @@ based on the transformer's natural scale (e.g. centred on `half_max`,
 spanning `signal_min` and `signal_max`, or bracketing a `threshold`).
 """
 function suggestSignalRange(s::PartialHillSignal)
-    base = isnothing(s.reference) ? 0.0 : s.reference.value
-    γ = s.p.half_max
-    return (float(base), float(base + 3 * abs(γ - base)))
+    return _hillLikeRange(s.p.half_max, s.reference)
 end
 function suggestSignalRange(s::HillSignal)
-    base = isnothing(s.reference) ? 0.0 : s.reference.value
-    γ = s.p.half_max
-    return (float(base), float(base + 3 * abs(γ - base)))
+    return _hillLikeRange(s.p.half_max, s.reference)
 end
 function suggestSignalRange(s::IdentitySignal)
     base = isnothing(s.reference) ? 0.0 : s.reference.value
     return (float(base), float(base + 1.0))
+end
+
+# Pick a range that spans the transformer's whole active region:
+# from "just past the off-side" to "well past half-max".
+function _hillLikeRange(γ::Real, ::Nothing)
+    return (0.0, 3.0 * float(γ))
+end
+function _hillLikeRange(γ::Real, ref::SignalReference)
+    s0 = ref.value
+    Δ = abs(γ - s0)
+    if ref.type == "increasing"
+        return (float(s0), float(s0 + 3Δ))   # active above s0
+    else
+        return (float(s0 - 3Δ), float(s0))   # active below s0
+    end
 end
 function suggestSignalRange(s::LinearSignal)
     w = s.signal_max - s.signal_min

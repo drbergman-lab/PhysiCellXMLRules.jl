@@ -4,7 +4,7 @@ using Test
 # Clean leftover artifacts from prior test runs (xml/csv files generated
 # directly in test/; assets/ is preserved).
 for f in readdir(@__DIR__; join=true)
-    isfile(f) && endswith(lowercase(f), r"\.(xml|csv)$") && rm(f; force=true)
+    isfile(f) && endswith(lowercase(f), r"\.(xml|csv|html)$") && rm(f; force=true)
 end
 
 @testset "PhysiCellXMLRules.jl" begin
@@ -15,4 +15,5 @@ end
     include("./SummarizeRulesTests.jl")
     include("./EvaluateRulesTests.jl")
     include("./RecipesTests.jl")
+    include("./HTMLTests.jl")
 end

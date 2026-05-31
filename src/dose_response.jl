@@ -8,14 +8,26 @@ Not exported. Intended call sites are the package's own extensions or
 internal docs.
 =#
 
+#=
+Aggregate the suggested range across every elementary signal occurrence
+sharing the name (the same name can appear on both the increasing and
+decreasing branches with different transformer params — see the `tent`
+and `vee` rulesets). The lower bound is clamped to 0 by default, since
+most PhysiCell signals are non-negative; pass `signal_ranges=...` to
+override on a per-signal basis.
+=#
 function _resolveRange(behavior::Behavior, name::AbstractString, override)
     if override isa Tuple{<:Real,<:Real}
         return (float(override[1]), float(override[2]))
     end
+    matches = ElementarySignal[]
     for s in elementarySignals(behavior)
-        s.name == name && return suggestSignalRange(s)
+        s.name == name && push!(matches, s)
     end
-    throw(ArgumentError("signal '$name' is not referenced by behavior '$(behavior.name)'"))
+    isempty(matches) && throw(ArgumentError("signal '$name' is not referenced by behavior '$(behavior.name)'"))
+    lo = minimum(first(suggestSignalRange(s)) for s in matches)
+    hi = maximum(last(suggestSignalRange(s))  for s in matches)
+    return (max(0.0, float(lo)), float(hi))
 end
 
 function _resolveFixedValue(behavior::Behavior, name::AbstractString, override)
