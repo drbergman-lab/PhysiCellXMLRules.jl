@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Examples · PhysiCellXMLRules.jl</title><meta name="title" content="Examples · PhysiCellXMLRules.jl"/><meta property="og:title" content="Examples · PhysiCellXMLRules.jl"/><meta property="twitter:title" content="Examples · PhysiCellXMLRules.jl"/><meta name="description" content="Documentation for PhysiCellXMLRules.jl."/><meta property="og:description" content="Documentation for PhysiCellXMLRules.jl."/><meta property="twitter:description" content="Documentation for PhysiCellXMLRules.jl."/><meta property="og:url" content="https://drbergman-lab.github.io/PhysiCellXMLRules.jl/man/examples/"/><meta property="twitter:url" content="https://drbergman-lab.github.io/PhysiCellXMLRules.jl/man/examples/"/><link rel="canonical" href="https://drbergman-lab.github.io/PhysiCellXMLRules.jl/man/examples/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">PhysiCellXMLRules.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../guide/">Guide</a></li><li><a class="tocitem" href="../features/">Features</a></li><li><a class="tocitem" href="../schema/">XSD schema</a></li><li class="is-active"><a class="tocitem" href>Examples</a><ul class="internal"><li><a class="tocitem" href="#Increasing-partial-Hill"><span>Increasing partial Hill</span></a></li><li><a class="tocitem" href="#Decreasing-partial-Hill-via-a-reference"><span>Decreasing partial Hill via a reference</span></a></li><li><a class="tocitem" href="#Mediator-variants"><span>Mediator variants</span></a></li><li><a class="tocitem" href="#Mean-aggregator"><span>Mean aggregator</span></a></li><li><a class="tocitem" href="#Tent-(rise-then-fall)"><span>Tent (rise then fall)</span></a></li><li><a class="tocitem" href="#Accumulator"><span>Accumulator</span></a></li><li><a class="tocitem" href="#Custom-mediator-/-custom-aggregator"><span>Custom mediator / custom aggregator</span></a></li><li><a class="tocitem" href="#Inspecting-an-unfamiliar-rules-XML"><span>Inspecting an unfamiliar rules XML</span></a></li><li><a class="tocitem" href="#Multi-signal-rules-and-surface-plots"><span>Multi-signal rules and surface plots</span></a></li><li><a class="tocitem" href="#Evaluating-a-rule-programmatically"><span>Evaluating a rule programmatically</span></a></li><li><a class="tocitem" href="#Editing-rules-and-saving-them-back"><span>Editing rules and saving them back</span></a></li><li><a class="tocitem" href="#Opening-the-interactive-explorer"><span>Opening the interactive explorer</span></a></li></ul></li></ul></li><li><span class="tocitem">Documentation</span><ul><li><a class="tocitem" href="../../lib/dose_response/">Dose-response helpers</a></li><li><a class="tocitem" href="../../lib/evaluate/">Evaluate</a></li><li><a class="tocitem" href="../../lib/export/">Export</a></li><li><a class="tocitem" href="../../lib/html/">Interactive HTML explorer</a></li><li><a class="tocitem" href="../../lib/parse/">Parse</a></li><li><a class="tocitem" href="../../lib/summarize/">Summarize</a></li><li><a class="tocitem" href="../../lib/validate/">Validate</a></li><li><a class="tocitem" href="../../lib/write_xml/">Write XML</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Manual</a></li><li class="is-active"><a href>Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/drbergman-lab/PhysiCellXMLRules.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/drbergman-lab/PhysiCellXMLRules.jl/blob/main/docs/src/man/examples.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h1><p>The PhysiCell sample project <code>template_xml_rules_extended</code> ships a <a href="https://github.com/drbergman/PhysiCell/blob/1.14.2-drbergman-2.1.2/sample_projects/template_xml_rules_extended/config/cell_rules.xml"><code>cell_rules.xml</code></a> that exercises every feature of the standard. This page walks through a representative subset; each &quot;cell type&quot; in that file is really a single ruleset designed to isolate one feature. Driving the simulation with each cell type in turn is the easiest way to build intuition for how the ingredients combine.</p><p>The signal driving every ruleset in the fixture is <code>time</code> and the behavior under control is <code>custom:sample</code>. That makes it easy to plot <code>custom:sample</code> against simulation time and read off the transformer / aggregator / mediator shape directly.</p><h2 id="Increasing-partial-Hill"><a class="docs-heading-anchor" href="#Increasing-partial-Hill">Increasing partial Hill</a><a id="Increasing-partial-Hill-1"></a><a class="docs-heading-anchor-permalink" href="#Increasing-partial-Hill" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;increasing_partial_hill&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;increasing_signals&gt;
+            &lt;max_response&gt;1&lt;/max_response&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;PartialHill&quot;&gt;
+                &lt;half_max&gt;30&lt;/half_max&gt;
+                &lt;hill_power&gt;2&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/increasing_signals&gt;
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p><code>custom:sample</code> rises monotonically with <code>time</code> toward <code>max_response = 1</code>. At <code>time = 30</code> the partial-Hill output is <code>(30/30)² = 1</code>, which the default <code>multivariate_hill</code> aggregator passes through as <code>1/(1+1) = 0.5</code> — so the behavior is at 50% of its <code>max_response</code> at the half-max.</p><h2 id="Decreasing-partial-Hill-via-a-reference"><a class="docs-heading-anchor" href="#Decreasing-partial-Hill-via-a-reference">Decreasing partial Hill via a reference</a><a id="Decreasing-partial-Hill-via-a-reference-1"></a><a class="docs-heading-anchor-permalink" href="#Decreasing-partial-Hill-via-a-reference" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;signal name=&quot;time&quot; type=&quot;PartialHill&quot;&gt;
+    &lt;half_max&gt;30&lt;/half_max&gt;
+    &lt;hill_power&gt;2&lt;/hill_power&gt;
+    &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+    &lt;reference&gt;
+        &lt;type&gt;decreasing&lt;/type&gt;
+        &lt;value&gt;60&lt;/value&gt;
+    &lt;/reference&gt;
+&lt;/signal&gt;</code></pre><p>The same partial-Hill transformer, but now driven by <code>60 − time</code> (clamped to 0). At <code>time = 0</code> the input is 60, the half-max is shifted to 30, so the behavior is high; at <code>time ≥ 60</code> the input is 0, so the behavior collapses back to base.</p><h2 id="Mediator-variants"><a class="docs-heading-anchor" href="#Mediator-variants">Mediator variants</a><a id="Mediator-variants-1"></a><a class="docs-heading-anchor-permalink" href="#Mediator-variants" title="Permalink"></a></h2><p>The fixture contains four &quot;mediator&quot; rulesets with identical signals but different mediators (<code>decreasing_dominant</code>, <code>increasing_dominant</code>, <code>neutral</code>, and <code>custom</code>). Compare them to see how each formula trades off the contributions of <code>D</code> and <code>U</code>.</p><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;neutral_mediator_hill&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;mediator&gt;neutral&lt;/mediator&gt;
+        &lt;decreasing_signals&gt;
+            &lt;max_response&gt;0&lt;/max_response&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;PartialHill&quot;&gt;
+                &lt;half_max&gt;20&lt;/half_max&gt;
+                &lt;hill_power&gt;2&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/decreasing_signals&gt;
+        &lt;increasing_signals&gt;
+            &lt;max_response&gt;1&lt;/max_response&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;PartialHill&quot;&gt;
+                &lt;half_max&gt;40&lt;/half_max&gt;
+                &lt;hill_power&gt;5&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/increasing_signals&gt;
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p>Under the <code>neutral</code> mediator, the increasing and decreasing branches contribute additively, so the behavior peaks where their net contribution is largest. Compare with <code>decreasing_dominant_mediator_hill</code> (decreasing fully overrides) and <code>increasing_dominant_mediator_hill</code> (increasing fully overrides) in the same file.</p><h2 id="Mean-aggregator"><a class="docs-heading-anchor" href="#Mean-aggregator">Mean aggregator</a><a id="Mean-aggregator-1"></a><a class="docs-heading-anchor-permalink" href="#Mean-aggregator" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;increasing_signals&gt;
+    &lt;aggregator&gt;mean&lt;/aggregator&gt;
+    &lt;max_response&gt;1&lt;/max_response&gt;
+    &lt;signal name=&quot;time&quot; type=&quot;Heaviside&quot;&gt;
+        &lt;type&gt;increasing&lt;/type&gt;
+        &lt;threshold&gt;13.5&lt;/threshold&gt;
+        &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+    &lt;/signal&gt;
+    &lt;signal name=&quot;time&quot; type=&quot;Heaviside&quot;&gt;
+        &lt;type&gt;increasing&lt;/type&gt;
+        &lt;threshold&gt;28.5&lt;/threshold&gt;
+        &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+    &lt;/signal&gt;
+    &lt;signal name=&quot;time&quot; type=&quot;Heaviside&quot;&gt;
+        &lt;type&gt;increasing&lt;/type&gt;
+        &lt;threshold&gt;43.5&lt;/threshold&gt;
+        &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+    &lt;/signal&gt;
+    &lt;signal name=&quot;time&quot; type=&quot;Heaviside&quot;&gt;
+        &lt;type&gt;increasing&lt;/type&gt;
+        &lt;threshold&gt;58.5&lt;/threshold&gt;
+        &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+    &lt;/signal&gt;
+&lt;/increasing_signals&gt;</code></pre><p>Four step functions, averaged, produce a four-step staircase as <code>time</code> crosses 13.5, 28.5, 43.5, and 58.5 — useful for piecewise-constant behaviors. With <code>sum</code> instead of <code>mean</code> the same construction grows unbounded; with <code>mean</code> the output stays in <code>[0, 1]</code>.</p><h2 id="Tent-(rise-then-fall)"><a class="docs-heading-anchor" href="#Tent-(rise-then-fall)">Tent (rise then fall)</a><a id="Tent-(rise-then-fall)-1"></a><a class="docs-heading-anchor-permalink" href="#Tent-(rise-then-fall)" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;tent&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;increasing_signals&gt;
+            &lt;aggregator&gt;sum&lt;/aggregator&gt;
+            &lt;max_response&gt;1&lt;/max_response&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;Linear&quot;&gt;
+                &lt;signal_min&gt;10&lt;/signal_min&gt;&lt;signal_max&gt;20&lt;/signal_max&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/increasing_signals&gt;
+        &lt;decreasing_signals&gt;
+            &lt;aggregator&gt;sum&lt;/aggregator&gt;
+            &lt;max_response&gt;0&lt;/max_response&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;Linear&quot;&gt;
+                &lt;signal_min&gt;40&lt;/signal_min&gt;&lt;signal_max&gt;50&lt;/signal_max&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/decreasing_signals&gt;
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p>Linear ramp up on <code>[10, 20]</code>, then a linear ramp down on <code>[40, 50]</code> driven by the (default) <code>decreasing_dominant</code> mediator. The result is a tent function in <code>time</code>.</p><h2 id="Accumulator"><a class="docs-heading-anchor" href="#Accumulator">Accumulator</a><a id="Accumulator-1"></a><a class="docs-heading-anchor-permalink" href="#Accumulator" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;accumulator&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;type&gt;accumulator&lt;/type&gt;
+        &lt;behavior_saturation&gt;1.0&lt;/behavior_saturation&gt;
+        &lt;base_value&gt;-0.05&lt;/base_value&gt;
+        &lt;increasing_signals&gt;
+            &lt;max_response&gt;0.2&lt;/max_response&gt;
+            &lt;aggregator&gt;product&lt;/aggregator&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;Hill&quot;&gt;
+                &lt;half_max&gt;5&lt;/half_max&gt;&lt;hill_power&gt;2&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+            &lt;signal name=&quot;time&quot; type=&quot;Heaviside&quot;&gt;
+                &lt;type&gt;decreasing&lt;/type&gt;
+                &lt;threshold&gt;30&lt;/threshold&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+        &lt;/increasing_signals&gt;
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p>Here the mediator output is a <em>rate</em>, not a behavior value. The product aggregator says: the rate goes positive only when <em>both</em> <code>time</code> is sufficiently large (Hill) <em>and</em> <code>time &lt; 30</code> (Heaviside). Otherwise the base rate <code>r₀ = −0.05</code> pulls the behavior back toward the cell-type base. The saturation <code>1.0</code> caps the accumulated value.</p><h2 id="Custom-mediator-/-custom-aggregator"><a class="docs-heading-anchor" href="#Custom-mediator-/-custom-aggregator">Custom mediator / custom aggregator</a><a id="Custom-mediator-/-custom-aggregator-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-mediator-/-custom-aggregator" title="Permalink"></a></h2><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;custom_mediator&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;mediator&gt;custom&lt;/mediator&gt;
+        ...
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p><code>custom</code> mediators and aggregators are <em>not</em> implemented in the XML itself — they delegate to C++ functions you provide in PhysiCell&#39;s <code>custom.cpp</code>. The signature is:</p><pre><code class="language-cpp hljs">// custom mediator (with access to MediatorSignal&#39;s min/base/max)
+double f(MediatorSignal* pMS, std::vector&lt;double&gt; signals_in);
+// or the simpler form
+double f(std::vector&lt;double&gt; signals_in);
+
+// custom aggregator
+double f(std::vector&lt;double&gt; signals_in);</code></pre><p>This package validates the XML and faithfully round-trips the <code>custom</code> keyword, but cannot tell you whether the corresponding C++ hook is registered — that&#39;s checked at simulation time. See the <code>template_xml_rules_extended</code> sample project for an example registration.</p><h2 id="Inspecting-an-unfamiliar-rules-XML"><a class="docs-heading-anchor" href="#Inspecting-an-unfamiliar-rules-XML">Inspecting an unfamiliar rules XML</a><a id="Inspecting-an-unfamiliar-rules-XML-1"></a><a class="docs-heading-anchor-permalink" href="#Inspecting-an-unfamiliar-rules-XML" title="Permalink"></a></h2><p>For any rules XML you didn&#39;t write yourself, the fastest path to understanding it is:</p><pre><code class="language-julia hljs">using PhysiCellXMLRules
+
+report = validateRulesXML(&quot;config/cell_rules.xml&quot;)
+println(report)             # surfaces any structural problems
+
+summarizeRulesXML(&quot;config/cell_rules.xml&quot;)</code></pre><p>A truncated sample of <code>summarizeRulesXML</code> against the fixture above:</p><pre><code class="nohighlight hljs">cell_type: increasing_partial_hill
+  behavior &quot;custom:sample&quot;  [setter]
+    mediator: decreasing_dominant
+      increasing_signals  [aggregator=multivariate_hill, max_response=1.0]
+        signal &quot;time&quot;: PartialHill(half_max=30.0, hill_power=2.0)  [applies_to_dead=false]
+
+cell_type: tent
+  behavior &quot;custom:sample&quot;  [setter]
+    mediator: decreasing_dominant
+      increasing_signals  [aggregator=sum, max_response=1.0]
+        signal &quot;time&quot;: Linear(increasing, signal_min=10.0, signal_max=20.0)  [applies_to_dead=false]
+      decreasing_signals  [aggregator=sum, max_response=0.0]
+        signal &quot;time&quot;: Linear(increasing, signal_min=40.0, signal_max=50.0)  [applies_to_dead=false]
+
+cell_type: accumulator
+  behavior &quot;custom:sample&quot;  [accumulator, behavior_saturation=1.0]
+    mediator: decreasing_dominant  [base_value=-0.05]
+      increasing_signals  [aggregator=product, max_response=0.2]
+        signal &quot;time&quot;: Hill(half_max=5.0, hill_power=2.0)  [applies_to_dead=false]
+        signal &quot;time&quot;: Heaviside(decreasing, threshold=30.0)  [applies_to_dead=false]</code></pre><h2 id="Multi-signal-rules-and-surface-plots"><a class="docs-heading-anchor" href="#Multi-signal-rules-and-surface-plots">Multi-signal rules and surface plots</a><a id="Multi-signal-rules-and-surface-plots-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-signal-rules-and-surface-plots" title="Permalink"></a></h2><p>The bundled <code>multi_signal_rules.xml</code> fixture defines rulesets whose behaviors reference more than one raw signal — useful for exercising the y-axis option of the explorer and the 2D heatmap path of the Plots recipe.</p><pre><code class="language-xml hljs">&lt;behavior_ruleset name=&quot;oxygen_and_low_pressure&quot;&gt;
+    &lt;behavior name=&quot;custom:sample&quot;&gt;
+        &lt;base_value&gt;0.0&lt;/base_value&gt;
+        &lt;increasing_signals&gt;
+            &lt;aggregator&gt;product&lt;/aggregator&gt;
+            &lt;max_response&gt;1.0&lt;/max_response&gt;
+            &lt;signal name=&quot;oxygen&quot; type=&quot;Hill&quot;&gt;
+                &lt;half_max&gt;10&lt;/half_max&gt;&lt;hill_power&gt;4&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+            &lt;/signal&gt;
+            &lt;signal name=&quot;pressure&quot; type=&quot;Hill&quot;&gt;
+                &lt;half_max&gt;0.5&lt;/half_max&gt;&lt;hill_power&gt;4&lt;/hill_power&gt;
+                &lt;applies_to_dead&gt;0&lt;/applies_to_dead&gt;
+                &lt;reference&gt;
+                    &lt;type&gt;decreasing&lt;/type&gt;
+                    &lt;value&gt;1.0&lt;/value&gt;
+                &lt;/reference&gt;
+            &lt;/signal&gt;
+        &lt;/increasing_signals&gt;
+    &lt;/behavior&gt;
+&lt;/behavior_ruleset&gt;</code></pre><p>Two Hill contributions are multiplied (the <code>product</code> aggregator turns them into AND-logic): the behavior climbs toward <code>b₊ = 1</code> only where oxygen is high <em>and</em> pressure is low. <code>Hill</code> (rather than <code>PartialHill</code>) is the right transformer here — product of inputs in <code>[0,1]</code> stays in <code>[0,1]</code>, so the rule&#39;s output is naturally bounded.</p><p>(The fixture&#39;s second ruleset, <code>oxygen_up_damage_down</code>, uses <code>PartialHill</code> instead because each branch&#39;s default <code>multivariate_hill</code> aggregator applies the Hill mapping <code>Σx/(1+Σx)</code> itself — feeding it already-Hill-mapped inputs would conflate two Hill mappings in series. Match transformer choice to aggregator: bounded aggregators like <code>product</code> / <code>min</code> / <code>max</code> / <code>mean</code> are happy with <code>Hill</code>; the <code>multivariate_hill</code> aggregator wants <code>PartialHill</code>.)</p><p>From a REPL with <code>Plots</code> loaded:</p><pre><code class="language-julia hljs">using Plots, PhysiCellXMLRules
+rs = parseRulesXML(&quot;test/assets/multi_signal_rules.xml&quot;)
+b = rs[1].behaviors[1]
+plot(b; vary=(&quot;oxygen&quot;, &quot;pressure&quot;),
+       signal_ranges=Dict(&quot;oxygen&quot;=&gt;(0,40), &quot;pressure&quot;=&gt;(0,1)))</code></pre><p>The same behavior in the HTML explorer assigns one signal to x, the other to y, and renders a Plotly heatmap with a labelled colorbar. The high-output region is in the corner where oxygen is high and pressure is low.</p><h2 id="Evaluating-a-rule-programmatically"><a class="docs-heading-anchor" href="#Evaluating-a-rule-programmatically">Evaluating a rule programmatically</a><a id="Evaluating-a-rule-programmatically-1"></a><a class="docs-heading-anchor-permalink" href="#Evaluating-a-rule-programmatically" title="Permalink"></a></h2><p><code>evaluateBehavior</code> computes a behavior&#39;s output (or rate, for accumulator/attenuator) at any set of raw signal values:</p><pre><code class="language-julia hljs">rs = parseRulesXML(&quot;test/assets/extended_cell_rules.xml&quot;)
+by = Dict(r.cell_type =&gt; r for r in rs)
+tent = by[&quot;tent&quot;].behaviors[1]
+
+# Sweep the tent rule across &quot;time&quot; 0..60 and print the curve:
+for t in 0:5:60
+    v = evaluateBehavior(tent, Dict(&quot;time&quot; =&gt; float(t)); b_base=0.0)
+    println(&quot;time=&quot;, lpad(t,2), &quot;  -&gt;  &quot;, round(v; digits=3))
+end</code></pre><p><code>b_min</code> / <code>b_base</code> / <code>b_max</code> keyword arguments override the mediator&#39;s stored <code>min</code> / <code>base</code> / <code>max</code> values for the call, so you can explore &quot;what if I changed the max_response without editing the XML?&quot; without mutating the tree.</p><h2 id="Editing-rules-and-saving-them-back"><a class="docs-heading-anchor" href="#Editing-rules-and-saving-them-back">Editing rules and saving them back</a><a id="Editing-rules-and-saving-them-back-1"></a><a class="docs-heading-anchor-permalink" href="#Editing-rules-and-saving-them-back" title="Permalink"></a></h2><p><code>writeXMLRules</code> has a typed-tree overload that&#39;s the inverse of <code>parseRulesXML</code>. Modifications you make in Julia (or in the HTML explorer, where the Save XML button does the same thing in JS) round-trip faithfully — including auto-assigned <code>id</code> attributes for sibling disambiguation (see the <a href="../features/#Features">Features</a> page).</p><pre><code class="language-julia hljs">rs = parseRulesXML(&quot;config/cell_rules.xml&quot;)
+# Bump the half_max on every elementary Hill signal in every behavior
+# (just to demonstrate; replace with whatever edit you actually need)
+for r in rs, b in r.behaviors
+    # …reach in and mutate the typed tree…
+end
+writeXMLRules(&quot;config/cell_rules.modified.xml&quot;, rs; force=true)</code></pre><h2 id="Opening-the-interactive-explorer"><a class="docs-heading-anchor" href="#Opening-the-interactive-explorer">Opening the interactive explorer</a><a id="Opening-the-interactive-explorer-1"></a><a class="docs-heading-anchor-permalink" href="#Opening-the-interactive-explorer" title="Permalink"></a></h2><p>For a hands-on view that&#39;s nice to share with collaborators (no Julia runtime needed to open it), generate a single HTML file:</p><pre><code class="language-julia hljs">using PhysiCellXMLRules
+exportInteractiveHTML(&quot;explorer.html&quot;, &quot;config/cell_rules.xml&quot;; force=true)
+# then:  $ open explorer.html</code></pre><p>What you get in the browser:</p><ul><li>A header with cell-type and behavior dropdowns plus a <strong>Save XML</strong> button.</li><li>A plot pane — Plotly line for 1D, heatmap with labelled colorbar for 2D.</li><li>Sidebar with a behavior-meta card (editable mediator scalars <code>b₀</code>/<code>b₋</code>/<code>b₊</code> with monotonicity enforced exactly as in <code>MediatorSignal</code>).</li><li>Section headers for <code>increasing_signals</code> / <code>decreasing_signals</code> (only the populated branches appear), each labelled with its aggregator.</li><li>One card per elementary signal: axis selector (x / y / fixed), value or range inputs, editable transformer parameters (<code>half_max</code>, <code>hill_power</code>, <code>threshold</code>, <code>signal_min</code>/<code>signal_max</code>, reference value), and a direction toggle for Linear/Heaviside.</li></ul><p>Behaviors that use custom mediators / aggregators or hierarchical sub-signals show a yellow banner in place of the plot — the parser and validator handle them fine, but the in-browser evaluator does not (custom hooks live in PhysiCell&#39;s <code>custom.cpp</code>; hierarchical signals are slated for v2 of the explorer).</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../schema/">« XSD schema</a><a class="docs-footer-nextpage" href="../../lib/dose_response/">Dose-response helpers »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 22 June 2026 10:16">Monday 22 June 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
