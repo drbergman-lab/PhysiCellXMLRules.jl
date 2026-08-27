@@ -216,6 +216,7 @@ function _parseBoolChild(parent_e::XMLElement, child_name::AbstractString)
     child = find_element(parent_e, child_name)
     isnothing(child) && return nothing
     text = strip(lowercase(content(child)))
+    isempty(text) && return nothing
     text in ("1", "true") && return true
     text in ("0", "false") && return false
     throw(ArgumentError("Could not parse <$child_name>$(text)</$child_name> as a boolean (expected 0/1/true/false)"))

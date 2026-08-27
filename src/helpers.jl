@@ -54,4 +54,3 @@ function getOrCreateElementByAttribute(parent_element::XMLElement, element_name:
 end
 
 _booleanToBinary(value::Bool) = value ? 1 : 0
-_booleanToBinary(value::String) = value == "true" ? 1 : 0
