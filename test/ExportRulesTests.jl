@@ -161,3 +161,37 @@ set_content(new_child(e_signal, "hill_power"), "2.0")
 set_content(new_child(e_signal, "applies_to_dead"), "maybe")
 save_file(xml_doc, "./test_applies_to_dead_unparseable.xml")
 @test_throws ArgumentError exportCSVRules("./test_applies_to_dead_unparseable.csv", "./test_applies_to_dead_unparseable.xml")
+
+
+#! test that a composite signal does not truncate its aggregator
+#! the same ruleset must export the same rows regardless of where the composite
+#! signal sits among its siblings
+function export_rows(rulesets, tag::AbstractString)
+    path_to_xml = "./test_composite_siblings_$(tag).xml"
+    path_to_csv = "./test_composite_siblings_$(tag).csv"
+    writeXMLRules(path_to_xml, rulesets; force=true)
+    exportCSVRules(path_to_csv, path_to_xml; force=true)
+    lines = readlines(path_to_csv) .|> strip
+    filter!(line -> !isempty(line) && !startswith(line, "//"), lines)
+    return lines
+end
+
+function composite_sibling_rulesets(mediator_first::Bool)
+    elementary = PhysiCellXMLRules.PartialHillSignal("pressure", 0.5, 4.0, false)
+    nested = PhysiCellXMLRules.MediatorSignal([PhysiCellXMLRules.HillSignal("oxygen", 2.0, 20.0, false)],
+                                              [PhysiCellXMLRules.HeavisideSignal("glucose", 10.0, false)])
+    signals = mediator_first ? [nested, elementary] : [elementary, nested]
+    increasing_signals = PhysiCellXMLRules.AggregatorSignal(PhysiCellXMLRules.AbstractSignal[signals...])
+    mediator = PhysiCellXMLRules.MediatorSignal(PhysiCellXMLRules.AggregatorSignal(PhysiCellXMLRules.AbstractSignal[]),
+                                                increasing_signals, nothing, 0.5, 1.2)
+    return [BehaviorRuleset("cd8", [PhysiCellXMLRules.Behavior("attack cancer", mediator)])]
+end
+
+rows_elementary_first = export_rows(composite_sibling_rulesets(false), "elementary_first")
+rows_mediator_first = export_rows(composite_sibling_rulesets(true), "mediator_first")
+
+#! the elementary sibling is exportable on its own and must survive either ordering
+@test "cd8,pressure,increases,attack cancer,1.2,0.5,4.0,0" in rows_elementary_first
+@test "cd8,pressure,increases,attack cancer,1.2,0.5,4.0,0" in rows_mediator_first
+@test sort(rows_elementary_first) == sort(rows_mediator_first)
+@test length(rows_mediator_first) == 3
