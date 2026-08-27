@@ -114,10 +114,14 @@ function exportAggregatorToCSV(io::IO, cell_type::AbstractString, behavior_name:
 
         signal_type = something(attribute(signal, "type"), "partial_hill") |> lowercase
 
+        #! a composite signal is one entry in this aggregator, not the end of it:
+        #! recurse into it and carry on with its siblings
         if signal_type == "mediator"
-            return exportMediatorToCSV(io, cell_type, signal, behavior_name, indent, max_response; is_top_level=false)
+            exportMediatorToCSV(io, cell_type, signal, behavior_name, indent, max_response; is_top_level=false)
+            continue
         elseif signal_type == "aggregator"
-            return exportAggregatorToCSV(io, cell_type, behavior_name, max_response, signal, response, indent)
+            exportAggregatorToCSV(io, cell_type, behavior_name, max_response, signal, response, indent)
+            continue
         end
 
         signal_name = attribute(signal, "name")
