@@ -150,45 +150,52 @@ function exportAggregatorToCSV(io::IO, cell_type::AbstractString, behavior_name:
     exportAggregatorToCSV(io, cell_type, behavior_name, "", signals_element, response, indent)
 end
 
+function exportAppliesToDead(signal::XMLElement)
+    #! <applies_to_dead> is optional in the XML; an absent (or empty) element
+    #! means the rule does not apply to dead cells.
+    applies_to_dead = _parseBoolChild(signal, "applies_to_dead")
+    return _booleanToBinary(something(applies_to_dead, false))
+end
+
 function exportPartialHillSignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
     half_max = content(find_element(signal, "half_max"))
     hill_power = content(find_element(signal, "hill_power"))
-    applies_to_dead = content(find_element(signal, "applies_to_dead"))
+    applies_to_dead = exportAppliesToDead(signal)
     signal_name = parseSignalReference(signal_name, signal)
-    row = (cell_type, signal_name, response, behavior_name, max_response, half_max, hill_power, _booleanToBinary(applies_to_dead))
+    row = (cell_type, signal_name, response, behavior_name, max_response, half_max, hill_power, applies_to_dead)
     println(io, join(row, ","))
 end
 
 function exportHillSignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
     half_max = content(find_element(signal, "half_max"))
     hill_power = content(find_element(signal, "hill_power"))
-    applies_to_dead = content(find_element(signal, "applies_to_dead"))
+    applies_to_dead = exportAppliesToDead(signal)
     signal_name = parseSignalReference(signal_name, signal)
-    row = (cell_type, signal_name, "$response (hill)", behavior_name, max_response, half_max, hill_power, _booleanToBinary(applies_to_dead))
+    row = (cell_type, signal_name, "$response (hill)", behavior_name, max_response, half_max, hill_power, applies_to_dead)
     println(io, join(row, ","))
 end
 
 function exportIdentitySignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
-    applies_to_dead = content(find_element(signal, "applies_to_dead"))
+    applies_to_dead = exportAppliesToDead(signal)
     signal_name = parseSignalReference(signal_name, signal)
-    row = (cell_type, signal_name, "$response (identity)", behavior_name, max_response, "", "", _booleanToBinary(applies_to_dead))
+    row = (cell_type, signal_name, "$response (identity)", behavior_name, max_response, "", "", applies_to_dead)
     println(io, join(row, ","))
 end
 
 function exportLinearSignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
     signal_min = content(find_element(signal, "signal_min"))
     signal_max = content(find_element(signal, "signal_max"))
-    applies_to_dead = content(find_element(signal, "applies_to_dead"))
+    applies_to_dead = exportAppliesToDead(signal)
     signal_name = parseDirectionOfAbsoluteSignal(signal_name, signal)
-    row = (cell_type, signal_name, "$response (linear)", behavior_name, max_response, signal_min, signal_max, _booleanToBinary(applies_to_dead))
+    row = (cell_type, signal_name, "$response (linear)", behavior_name, max_response, signal_min, signal_max, applies_to_dead)
     println(io, join(row, ","))
 end
 
 function exportHeavisideSignalToCSV(io::IO, cell_type::AbstractString, signal::XMLElement, signal_name::String, response::Symbol, behavior_name::AbstractString, max_response::AbstractString)
     threshold = content(find_element(signal, "threshold"))
-    applies_to_dead = content(find_element(signal, "applies_to_dead"))
+    applies_to_dead = exportAppliesToDead(signal)
     signal_name = parseDirectionOfAbsoluteSignal(signal_name, signal)
-    row = (cell_type, signal_name, "$response (heaviside)", behavior_name, max_response, threshold, "", _booleanToBinary(applies_to_dead))
+    row = (cell_type, signal_name, "$response (heaviside)", behavior_name, max_response, threshold, "", applies_to_dead)
     println(io, join(row, ","))
 end
 

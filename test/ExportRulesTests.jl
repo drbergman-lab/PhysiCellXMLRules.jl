@@ -101,3 +101,63 @@ e_applies_to_dead_1 = new_child(e_signal_1, "applies_to_dead")
 set_content(e_applies_to_dead_1, "0")
 save_file(xml_doc, "./test_missing_max_response.xml")
 exportCSVRules("./test_missing_max_response.csv", "./test_missing_max_response.xml")
+
+#! test applies_to_dead export
+function applies_to_dead_column(path_to_csv::AbstractString)
+    lines = readlines(path_to_csv) .|> strip
+    filter!(line -> !isempty(line) && !startswith(line, "//"), lines)
+    return [split(line, ",")[end] for line in lines]
+end
+
+#! applies_to_dead=1 must survive the CSV -> XML -> CSV round trip for every
+#! elementary signal type
+csv_text = """
+cancer,pressure,decreases,cycle entry,0.0,0.5,8.0,0
+cancer,dead,increases,debris secretion,1.0,1.0e-10,1.0,1
+cd8,damage,increases (hill),apoptosis,1.0,30.0,10.0,1
+cd8,oxygen,increases (identity),migration speed,1.0,,,1
+cd8,pressure,increases (linear),migration bias,1.0,0.5,1.2,1
+cd8,time,increases (heaviside),attack cancer,1.0,10.0,,1
+"""
+
+open("cell_rules_applies_to_dead.csv", "w") do f
+    write(f, csv_text)
+end
+
+writeXMLRules("./test_applies_to_dead.xml", "./cell_rules_applies_to_dead.csv")
+exportCSVRules("./cell_rules_applies_to_dead_exported.csv", "./test_applies_to_dead.xml")
+compare_csvs("./cell_rules_applies_to_dead.csv", "./cell_rules_applies_to_dead_exported.csv")
+@test applies_to_dead_column("./cell_rules_applies_to_dead_exported.csv") == ["0", "1", "1", "1", "1", "1"]
+
+#! 0/1/true/false are all accepted (case- and whitespace-insensitively) and an
+#! absent or empty <applies_to_dead> means the rule does not apply to dead cells
+xml_doc = XMLDocument()
+xml_root = create_root(xml_doc, "behavior_rulesets")
+e = new_child(xml_root, "behavior_ruleset")
+set_attribute(e, "name", "cd8")
+e = new_child(e, "behavior")
+set_attribute(e, "name", "attack cancer")
+e_increasing = new_child(e, "increasing_signals")
+set_content(new_child(e_increasing, "max_response"), "1.0")
+
+applies_to_dead_variants = ["1", "true", " TRUE ", "0", "false", " False ", nothing, ""]
+for (i, applies_to_dead) in enumerate(applies_to_dead_variants)
+    e_variant = new_child(e_increasing, "signal")
+    set_attribute(e_variant, "name", "signal_$i")
+    set_content(new_child(e_variant, "half_max"), "1.0")
+    set_content(new_child(e_variant, "hill_power"), "2.0")
+    isnothing(applies_to_dead) || set_content(new_child(e_variant, "applies_to_dead"), applies_to_dead)
+end
+
+save_file(xml_doc, "./test_applies_to_dead_variants.xml")
+exportCSVRules("./test_applies_to_dead_variants.csv", "./test_applies_to_dead_variants.xml")
+@test applies_to_dead_column("./test_applies_to_dead_variants.csv") == ["1", "1", "1", "0", "0", "0", "0", "0"]
+
+#! an unparseable <applies_to_dead> is an error rather than a silent 0
+e_signal = new_child(e_increasing, "signal")
+set_attribute(e_signal, "name", "unparseable")
+set_content(new_child(e_signal, "half_max"), "1.0")
+set_content(new_child(e_signal, "hill_power"), "2.0")
+set_content(new_child(e_signal, "applies_to_dead"), "maybe")
+save_file(xml_doc, "./test_applies_to_dead_unparseable.xml")
+@test_throws ArgumentError exportCSVRules("./test_applies_to_dead_unparseable.csv", "./test_applies_to_dead_unparseable.xml")
