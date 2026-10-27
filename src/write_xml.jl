@@ -266,7 +266,8 @@ function addRules!(xml_root::XMLElement, path_to_csv::AbstractString)
     @assert isfile(path_to_csv) "The path to the CSV file must be a file. $(path_to_csv) is not a file."
     header = [:cell_type, :signal, :response, :behavior, :max_response, :p₁, :p₂, :applies_to_dead]
     types = [String, String, String, String, Float64, Float64, Float64, Bool]
-    df = CSV.read(path_to_csv, DataFrame; header=header, types=types, comment="//")
+    df = CSV.read(path_to_csv, DataFrame; header=header, types=types, comment="//",
+                  truestrings=["true", "True", "TRUE", "1"], falsestrings=["false", "False", "FALSE", "0"])
     if isempty(df)
         return
     end
