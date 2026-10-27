@@ -16,7 +16,7 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 PhysiCellXMLRulesRecipesBaseExt = "RecipesBase"
 
 [compat]
-CSV = "0.10.15"
+CSV = "0.10.15, 1"
 DataFrames = "1.7.0"
 LightXML = "0.9.1"
 RecipesBase = "1"
